@@ -10,7 +10,7 @@ Access Sentry data directly via the API. Uses auth token from `~/.sentryclirc`.
 ## Fetch Issue
 
 ```bash
-./tools/fetch-issue.js <issue-id-or-url>
+./scripts/fetch-issue.js <issue-id-or-url>
 ```
 
 Accepts either:
@@ -21,16 +21,16 @@ Accepts either:
 
 Examples:
 ```bash
-./tools/fetch-issue.js 5765604106
-./tools/fetch-issue.js https://sentry.io/organizations/sentry/issues/5765604106/
-./tools/fetch-issue.js https://myorg.sentry.io/issues/5765604106/
-./tools/fetch-issue.js JAVASCRIPT-ABC --org sentry
+./scripts/fetch-issue.js 5765604106
+./scripts/fetch-issue.js https://sentry.io/organizations/sentry/issues/5765604106/
+./scripts/fetch-issue.js https://myorg.sentry.io/issues/5765604106/
+./scripts/fetch-issue.js JAVASCRIPT-ABC --org sentry
 ```
 
 ## Fetch Latest Event
 
 ```bash
-./tools/fetch-issue.js <issue-id-or-url> --latest
+./scripts/fetch-issue.js <issue-id-or-url> --latest
 ```
 
 Fetches the latest event for the issue, including full stack trace.
@@ -53,7 +53,7 @@ With `--latest`, also shows:
 ## Search Logs
 
 ```bash
-./tools/search-logs.js [query|url] [options]
+./scripts/search-logs.js [query|url] [options]
 ```
 
 Search for logs in Sentry's Logs Explorer.
@@ -85,19 +85,19 @@ Combine filters: `level:error message:*failed*`
 
 ```bash
 # List recent logs for an org
-./tools/search-logs.js --org myorg
+./scripts/search-logs.js --org myorg
 
 # Search for errors in a specific project
-./tools/search-logs.js "level:error" --org myorg --project backend
+./scripts/search-logs.js "level:error" --org myorg --project backend
 
 # Search for timeout messages in the last 7 days
-./tools/search-logs.js "message:*timeout*" --org myorg --period 7d
+./scripts/search-logs.js "message:*timeout*" --org myorg --period 7d
 
 # Get logs as JSON
-./tools/search-logs.js --org myorg --limit 50 --json
+./scripts/search-logs.js --org myorg --limit 50 --json
 
 # Use a Sentry logs explorer URL directly
-./tools/search-logs.js "https://myorg.sentry.io/explore/logs/?project=123&statsPeriod=7d"
+./scripts/search-logs.js "https://myorg.sentry.io/explore/logs/?project=123&statsPeriod=7d"
 ```
 
 ### Output

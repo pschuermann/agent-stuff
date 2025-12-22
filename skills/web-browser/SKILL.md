@@ -11,8 +11,8 @@ Minimal CDP tools for collaborative site exploration.
 ## Start Chrome
 
 \`\`\`bash
-./tools/start.js              # Fresh profile
-./tools/start.js --profile    # Copy your profile (cookies, logins)
+./scripts/start.js              # Fresh profile
+./scripts/start.js --profile    # Copy your profile (cookies, logins)
 \`\`\`
 
 Start Chrome on `:9222` with remote debugging.
@@ -20,8 +20,8 @@ Start Chrome on `:9222` with remote debugging.
 ## Navigate
 
 \`\`\`bash
-./tools/nav.js https://example.com
-./tools/nav.js https://example.com --new
+./scripts/nav.js https://example.com
+./scripts/nav.js https://example.com --new
 \`\`\`
 
 Navigate current tab or open new tab.
@@ -29,9 +29,9 @@ Navigate current tab or open new tab.
 ## Evaluate JavaScript
 
 \`\`\`bash
-./tools/eval.js 'document.title'
-./tools/eval.js 'document.querySelectorAll("a").length'
-./tools/eval.js 'JSON.stringify(Array.from(document.querySelectorAll("a")).map(a => ({ text: a.textContent.trim(), href: a.href })).filter(link => !link.href.startsWith("https://")))'
+./scripts/eval.js 'document.title'
+./scripts/eval.js 'document.querySelectorAll("a").length'
+./scripts/eval.js 'JSON.stringify(Array.from(document.querySelectorAll("a")).map(a => ({ text: a.textContent.trim(), href: a.href })).filter(link => !link.href.startsWith("https://")))'
 \`\`\`
 
 Execute JavaScript in active tab (async context).  Be careful with string escaping, best to use single quotes.
@@ -39,7 +39,7 @@ Execute JavaScript in active tab (async context).  Be careful with string escapi
 ## Screenshot
 
 \`\`\`bash
-./tools/screenshot.js
+./scripts/screenshot.js
 \`\`\`
 
 Screenshot current viewport, returns temp file path
@@ -47,7 +47,7 @@ Screenshot current viewport, returns temp file path
 ## Pick Elements
 
 \`\`\`bash
-./tools/pick.js "Click the submit button"
+./scripts/pick.js "Click the submit button"
 \`\`\`
 
 Interactive element picker. Click to select, Cmd/Ctrl+Click for multi-select, Enter to finish.
