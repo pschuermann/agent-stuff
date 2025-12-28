@@ -45,3 +45,7 @@ In the [`skills/tmux`](skills/tmux) folder is a Claude Skill that lets it drive 
 ## sentry
 
 In the [`skills/sentry`](skills/sentry) folder there is an alternative way to access Sentry as a Claude Skill.  I found the other methods to talk to Sentry token inefficient and just not great.  Right now it can only read issues though and might not be ideal yet.
+
+## improve-skill
+
+In the [`skills/improve-skill`](skills/improve-skill) folder is a skill that helps analyze coding agent sessions to improve or create new skills.  It works with Claude Code, Pi, and Codex session files.  Ask the agent to "improve the sentry skill based on this session" or "create a new skill from this session" to use it.
