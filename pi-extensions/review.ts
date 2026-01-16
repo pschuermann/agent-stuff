@@ -16,9 +16,14 @@
  * - `/review custom "check for security issues"` - custom instructions
  */
 
-import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
-import { DynamicBorder } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext, ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
+import { DynamicBorder, BorderedLoader } from "@mariozechner/pi-coding-agent";
 import { Container, type SelectItem, SelectList, Text, Key } from "@mariozechner/pi-tui";
+
+// State to track fresh session review (where we branched from).
+// Module-level state means only one review can be active at a time.
+// This is intentional - the UI and /end-review command assume a single active review.
+let reviewOriginId: string | undefined = undefined;
 
 // Review target types (matching Codex's approach)
 type ReviewTarget =
@@ -169,6 +174,25 @@ async function getRecentCommits(pi: ExtensionAPI, limit: number = 10): Promise<A
 }
 
 /**
+ * Check if there are uncommitted changes (staged, unstaged, or untracked)
+ */
+async function hasUncommittedChanges(pi: ExtensionAPI): Promise<boolean> {
+	const { stdout, code } = await pi.exec("git", ["status", "--porcelain"]);
+	return code === 0 && stdout.trim().length > 0;
+}
+
+/**
+ * Get the current branch name
+ */
+async function getCurrentBranch(pi: ExtensionAPI): Promise<string | null> {
+	const { stdout, code } = await pi.exec("git", ["branch", "--show-current"]);
+	if (code === 0 && stdout.trim()) {
+		return stdout.trim();
+	}
+	return null;
+}
+
+/**
  * Get the default branch (main or master)
  */
 async function getDefaultBranch(pi: ExtensionAPI): Promise<string> {
@@ -244,14 +268,44 @@ const REVIEW_PRESETS = [
 
 export default function reviewExtension(pi: ExtensionAPI) {
 	/**
+	 * Determine the smart default review type based on git state
+	 */
+	async function getSmartDefault(): Promise<"uncommitted" | "baseBranch" | "commit"> {
+		// Priority 1: If there are uncommitted changes, default to reviewing them
+		if (await hasUncommittedChanges(pi)) {
+			return "uncommitted";
+		}
+
+		// Priority 2: If on a feature branch (not the default branch), default to PR-style review
+		const currentBranch = await getCurrentBranch(pi);
+		const defaultBranch = await getDefaultBranch(pi);
+		if (currentBranch && currentBranch !== defaultBranch) {
+			return "baseBranch";
+		}
+
+		// Priority 3: Default to reviewing a specific commit
+		return "commit";
+	}
+
+	/**
 	 * Show the review preset selector
 	 */
 	async function showReviewSelector(ctx: ExtensionContext): Promise<ReviewTarget | null> {
-		const items: SelectItem[] = REVIEW_PRESETS.map((preset) => ({
-			value: preset.value,
-			label: preset.label,
-			description: preset.description,
-		}));
+		// Determine smart default and reorder items
+		const smartDefault = await getSmartDefault();
+		const items: SelectItem[] = REVIEW_PRESETS
+			.slice() // copy to avoid mutating original
+			.sort((a, b) => {
+				// Put smart default first
+				if (a.value === smartDefault) return -1;
+				if (b.value === smartDefault) return 1;
+				return 0;
+			})
+			.map((preset) => ({
+				value: preset.value,
+				label: preset.label,
+				description: preset.description,
+			}));
 
 		const result = await ctx.ui.custom<string | null>((tui, theme, _kb, done) => {
 			const container = new Container();
@@ -455,14 +509,70 @@ export default function reviewExtension(pi: ExtensionAPI) {
 	/**
 	 * Execute the review
 	 */
-	async function executeReview(ctx: ExtensionContext, target: ReviewTarget): Promise<void> {
+	async function executeReview(ctx: ExtensionCommandContext, target: ReviewTarget, useFreshSession: boolean): Promise<void> {
+		// Check if we're already in a review
+		if (reviewOriginId) {
+			ctx.ui.notify("Already in a review. Use /end-review to finish first.", "warning");
+			return;
+		}
+
+		// Handle fresh session mode
+		if (useFreshSession) {
+			// Store current position (where we'll return to)
+			reviewOriginId = ctx.sessionManager.getLeafId() ?? undefined;
+
+			// Find the first user message in the session
+			const entries = ctx.sessionManager.getEntries();
+			const firstUserMessage = entries.find(
+				(e) => e.type === "message" && e.message.role === "user",
+			);
+
+			if (!firstUserMessage) {
+				ctx.ui.notify("No user message found in session", "error");
+				reviewOriginId = undefined;
+				return;
+			}
+
+			// Navigate to first user message to create a new branch from that point
+			// Label it as "code-review" so it's visible in the tree
+			try {
+				const result = await ctx.navigateTree(firstUserMessage.id, { summarize: false, label: "code-review" });
+				if (result.cancelled) {
+					reviewOriginId = undefined;
+					return;
+				}
+			} catch (error) {
+				// Clean up state if navigation fails
+				reviewOriginId = undefined;
+				ctx.ui.notify(`Failed to start review: ${error instanceof Error ? error.message : String(error)}`, "error");
+				return;
+			}
+
+			// Clear the editor (navigating to user message fills it with the message text)
+			ctx.ui.setEditorText("");
+
+			// Show widget indicating review is active
+			ctx.ui.setWidget("review", (_tui, theme) => {
+				const text = new Text(theme.fg("warning", "Review session active, return with /end-review"), 0, 0);
+				return {
+					render(width: number) {
+						return text.render(width);
+					},
+					invalidate() {
+						text.invalidate();
+					},
+				};
+			});
+		}
+
 		const prompt = await buildReviewPrompt(pi, target);
 		const hint = getUserFacingHint(target);
 
 		// Combine the review rubric with the specific prompt
 		const fullPrompt = `${REVIEW_RUBRIC}\n\n---\n\nPlease perform a code review with the following focus:\n\n${prompt}`;
 
-		ctx.ui.notify(`Starting review: ${hint}`, "info");
+		const modeHint = useFreshSession ? " (fresh session)" : "";
+		ctx.ui.notify(`Starting review: ${hint}${modeHint}`, "info");
 
 		// Send as a user message that triggers a turn
 		pi.sendUserMessage(fullPrompt);
@@ -514,6 +624,12 @@ export default function reviewExtension(pi: ExtensionAPI) {
 				return;
 			}
 
+			// Check if we're already in a review
+			if (reviewOriginId) {
+				ctx.ui.notify("Already in a review. Use /end-review to finish first.", "warning");
+				return;
+			}
+
 			// Check if we're in a git repository
 			const { code } = await pi.exec("git", ["rev-parse", "--git-dir"]);
 			if (code !== 0) {
@@ -534,7 +650,157 @@ export default function reviewExtension(pi: ExtensionAPI) {
 				return;
 			}
 
-			await executeReview(ctx, target);
+			// Determine if we should use fresh session mode
+			// Check if this is a new session (no messages yet)
+			const entries = ctx.sessionManager.getEntries();
+			const messageCount = entries.filter((e) => e.type === "message").length;
+
+			let useFreshSession = false;
+
+			if (messageCount > 0) {
+				// Existing session - ask user which mode they want
+				const choice = await ctx.ui.select("Start review in:", ["Empty branch", "Current session"]);
+
+				if (choice === undefined) {
+					ctx.ui.notify("Review cancelled", "info");
+					return;
+				}
+
+				useFreshSession = choice === "Empty branch";
+			}
+			// If messageCount === 0, useFreshSession stays false (current session mode)
+
+			await executeReview(ctx, target, useFreshSession);
+		},
+	});
+
+	// Custom prompt for review summaries - focuses on capturing review findings
+	const REVIEW_SUMMARY_PROMPT = `We are switching to a coding session to continue working on the code. 
+Create a structured summary of this review branch for context when returning later.
+	
+You MUST summarize the code review that was performed in this branch so that the user can act on it.
+
+1. What was reviewed (files, changes, scope)
+2. Key findings and their priority levels (P0-P3)
+3. The overall verdict (correct vs needs attention)
+4. Any action items or recommendations
+
+YOU MUST append a message with this EXACT format at the end of your summary:
+
+## Next Steps
+1. [What should happen next to act on the review]
+
+## Constraints & Preferences
+- [Any constraints, preferences, or requirements mentioned]
+- [Or "(none)" if none were mentioned]
+
+## Code Review Findings
+
+[P0] Short Title
+
+File: path/to/file.ext:line_number
+
+\`\`\`
+affected code snippet
+\`\`\`
+
+Preserve exact file paths, function names, and error messages.
+`;
+
+	// Register the /end-review command
+	pi.registerCommand("end-review", {
+		description: "Complete review and return to original position",
+		handler: async (args, ctx) => {
+			if (!ctx.hasUI) {
+				ctx.ui.notify("End-review requires interactive mode", "error");
+				return;
+			}
+
+			// Check if we're in a fresh session review
+			if (!reviewOriginId) {
+				ctx.ui.notify("Not in a review branch (use /review first, or review was started in current session mode)", "info");
+				return;
+			}
+
+			// Ask about summarization (Summarize is default/first option)
+			const summaryChoice = await ctx.ui.select("Summarize review branch?", [
+				"Summarize",
+				"No summary",
+			]);
+
+			if (summaryChoice === undefined) {
+				// User cancelled - keep state so they can call /end-review again
+				ctx.ui.notify("Cancelled. Use /end-review to try again.", "info");
+				return;
+			}
+
+			const wantsSummary = summaryChoice === "Summarize";
+			const originId = reviewOriginId;
+
+			if (wantsSummary) {
+				// Show spinner while summarizing
+				const result = await ctx.ui.custom<{ cancelled: boolean; error?: string } | null>((tui, theme, _kb, done) => {
+					const loader = new BorderedLoader(tui, theme, "Summarizing review branch...");
+					loader.onAbort = () => done(null);
+
+					ctx.navigateTree(originId!, {
+						summarize: true,
+						customInstructions: REVIEW_SUMMARY_PROMPT,
+						replaceInstructions: true,
+					})
+						.then(done)
+						.catch((err) => done({ cancelled: false, error: err instanceof Error ? err.message : String(err) }));
+
+					return loader;
+				});
+
+				if (result === null) {
+					// User aborted - keep state so they can try again
+					ctx.ui.notify("Summarization cancelled. Use /end-review to try again.", "info");
+					return;
+				}
+
+				if (result.error) {
+					// Real error - keep state so they can try again
+					ctx.ui.notify(`Summarization failed: ${result.error}`, "error");
+					return;
+				}
+
+				// Clear state only on success
+				ctx.ui.setWidget("review", undefined);
+				reviewOriginId = undefined;
+
+				if (result.cancelled) {
+					ctx.ui.notify("Navigation cancelled", "info");
+					return;
+				}
+
+				// Pre-fill prompt if editor is empty
+				if (!ctx.ui.getEditorText().trim()) {
+					ctx.ui.setEditorText("Act on the code review");
+				}
+
+				ctx.ui.notify("Review complete! Returned to original position.", "info");
+			} else {
+				// No summary - just navigate back
+				try {
+					const result = await ctx.navigateTree(originId!, { summarize: false });
+
+					if (result.cancelled) {
+						// Keep state so they can try again
+						ctx.ui.notify("Navigation cancelled. Use /end-review to try again.", "info");
+						return;
+					}
+
+					// Clear state only on success
+					ctx.ui.setWidget("review", undefined);
+					reviewOriginId = undefined;
+					ctx.ui.notify("Review complete! Returned to original position.", "info");
+				} catch (error) {
+					// Keep state so they can try again
+					ctx.ui.notify(`Failed to return: ${error instanceof Error ? error.message : String(error)}`, "error");
+				}
+			}
 		},
 	});
 }
