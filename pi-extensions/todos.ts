@@ -6,10 +6,10 @@ import fs from "node:fs/promises";
 import { existsSync } from "node:fs";
 import crypto from "node:crypto";
 
-const ISSUE_DIR_NAME = ".pi/issues";
+const TODO_DIR_NAME = ".pi/todos";
 const LOCK_TTL_MS = 30 * 60 * 1000;
 
-interface IssueFrontMatter {
+interface TodoFrontMatter {
 	id: string;
 	title: string;
 	tags: string[];
@@ -17,7 +17,7 @@ interface IssueFrontMatter {
 	created_at: string;
 }
 
-interface IssueRecord extends IssueFrontMatter {
+interface TodoRecord extends TodoFrontMatter {
 	body: string;
 }
 
@@ -28,27 +28,27 @@ interface LockInfo {
 	created_at: string;
 }
 
-const IssueParams = Type.Object({
+const TodoParams = Type.Object({
 	action: StringEnum(["list", "get", "create", "update", "append"] as const),
-	id: Type.Optional(Type.String({ description: "Issue id (filename)" })),
-	title: Type.Optional(Type.String({ description: "Issue title" })),
-	status: Type.Optional(Type.String({ description: "Issue status" })),
-	tags: Type.Optional(Type.Array(Type.String({ description: "Issue tag" }))),
-	body: Type.Optional(Type.String({ description: "Issue body or append text" })),
+	id: Type.Optional(Type.String({ description: "Todo id (filename)" })),
+	title: Type.Optional(Type.String({ description: "Todo title" })),
+	status: Type.Optional(Type.String({ description: "Todo status" })),
+	tags: Type.Optional(Type.Array(Type.String({ description: "Todo tag" }))),
+	body: Type.Optional(Type.String({ description: "Todo body or append text" })),
 });
 
-type IssueAction = "list" | "get" | "create" | "update" | "append";
+type TodoAction = "list" | "get" | "create" | "update" | "append";
 
-function getIssuesDir(cwd: string): string {
-	return path.resolve(cwd, ISSUE_DIR_NAME);
+function getTodosDir(cwd: string): string {
+	return path.resolve(cwd, TODO_DIR_NAME);
 }
 
-function getIssuePath(issuesDir: string, id: string): string {
-	return path.join(issuesDir, `${id}.md`);
+function getTodoPath(todosDir: string, id: string): string {
+	return path.join(todosDir, `${id}.md`);
 }
 
-function getLockPath(issuesDir: string, id: string): string {
-	return path.join(issuesDir, `${id}.lock`);
+function getLockPath(todosDir: string, id: string): string {
+	return path.join(todosDir, `${id}.lock`);
 }
 
 function stripQuotes(value: string): string {
@@ -69,8 +69,8 @@ function parseTagsInline(value: string): string[] {
 		.filter(Boolean);
 }
 
-function parseFrontMatter(text: string, idFallback: string): IssueFrontMatter {
-	const data: IssueFrontMatter = {
+function parseFrontMatter(text: string, idFallback: string): TodoFrontMatter {
+	const data: TodoFrontMatter = {
 		id: idFallback,
 		title: "",
 		tags: [],
@@ -140,7 +140,7 @@ function splitFrontMatter(content: string): { frontMatter: string; body: string 
 	return { frontMatter, body };
 }
 
-function parseIssueContent(content: string, idFallback: string): IssueRecord {
+function parseTodoContent(content: string, idFallback: string): TodoRecord {
 	const { frontMatter, body } = splitFrontMatter(content);
 	const parsed = parseFrontMatter(frontMatter, idFallback);
 	return {
@@ -157,45 +157,45 @@ function escapeYaml(value: string): string {
 	return value.replace(/\\/g, "\\\\").replace(/\"/g, "\\\"");
 }
 
-function serializeIssue(issue: IssueRecord): string {
-	const tags = issue.tags ?? [];
+function serializeTodo(todo: TodoRecord): string {
+	const tags = todo.tags ?? [];
 	const lines = [
 		"---",
-		`id: \"${escapeYaml(issue.id)}\"`,
-		`title: \"${escapeYaml(issue.title)}\"`,
+		`id: \"${escapeYaml(todo.id)}\"`,
+		`title: \"${escapeYaml(todo.title)}\"`,
 		"tags:",
 		...tags.map((tag) => `  - \"${escapeYaml(tag)}\"`),
-		`status: \"${escapeYaml(issue.status)}\"`,
-		`created_at: \"${escapeYaml(issue.created_at)}\"`,
+		`status: \"${escapeYaml(todo.status)}\"`,
+		`created_at: \"${escapeYaml(todo.created_at)}\"`,
 		"---",
 		"",
 	];
 
-	const body = issue.body ?? "";
+	const body = todo.body ?? "";
 	const trimmedBody = body.replace(/^\n+/, "").replace(/\s+$/, "");
 	return `${lines.join("\n")}${trimmedBody ? `${trimmedBody}\n` : ""}`;
 }
 
-async function ensureIssuesDir(issuesDir: string) {
-	await fs.mkdir(issuesDir, { recursive: true });
+async function ensureTodosDir(todosDir: string) {
+	await fs.mkdir(todosDir, { recursive: true });
 }
 
-async function readIssueFile(filePath: string, idFallback: string): Promise<IssueRecord> {
+async function readTodoFile(filePath: string, idFallback: string): Promise<TodoRecord> {
 	const content = await fs.readFile(filePath, "utf8");
-	return parseIssueContent(content, idFallback);
+	return parseTodoContent(content, idFallback);
 }
 
-async function writeIssueFile(filePath: string, issue: IssueRecord) {
-	await fs.writeFile(filePath, serializeIssue(issue), "utf8");
+async function writeTodoFile(filePath: string, todo: TodoRecord) {
+	await fs.writeFile(filePath, serializeTodo(todo), "utf8");
 }
 
-async function generateIssueId(issuesDir: string): Promise<string> {
+async function generateTodoId(todosDir: string): Promise<string> {
 	for (let attempt = 0; attempt < 10; attempt += 1) {
 		const id = crypto.randomBytes(4).toString("hex");
-		const issuePath = getIssuePath(issuesDir, id);
-		if (!existsSync(issuePath)) return id;
+		const todoPath = getTodoPath(todosDir, id);
+		if (!existsSync(todoPath)) return id;
 	}
-	throw new Error("Failed to generate unique issue id");
+	throw new Error("Failed to generate unique todo id");
 }
 
 async function readLockInfo(lockPath: string): Promise<LockInfo | null> {
@@ -208,11 +208,11 @@ async function readLockInfo(lockPath: string): Promise<LockInfo | null> {
 }
 
 async function acquireLock(
-	issuesDir: string,
+	todosDir: string,
 	id: string,
 	ctx: ExtensionContext,
 ): Promise<(() => Promise<void>) | { error: string }> {
-	const lockPath = getLockPath(issuesDir, id);
+	const lockPath = getLockPath(todosDir, id);
 	const now = Date.now();
 	const session = ctx.sessionManager.getSessionFile();
 
@@ -243,29 +243,29 @@ async function acquireLock(
 			if (lockAge <= LOCK_TTL_MS) {
 				const info = await readLockInfo(lockPath);
 				const owner = info?.session ? ` (session ${info.session})` : "";
-				return { error: `Issue ${id} is locked${owner}. Try again later.` };
+				return { error: `Todo ${id} is locked${owner}. Try again later.` };
 			}
 			if (!ctx.hasUI) {
-				return { error: `Issue ${id} lock is stale; rerun in interactive mode to steal it.` };
+				return { error: `Todo ${id} lock is stale; rerun in interactive mode to steal it.` };
 			}
-			const ok = await ctx.ui.confirm("Issue locked", `Issue ${id} appears locked. Steal the lock?`);
+			const ok = await ctx.ui.confirm("Todo locked", `Todo ${id} appears locked. Steal the lock?`);
 			if (!ok) {
-				return { error: `Issue ${id} remains locked.` };
+				return { error: `Todo ${id} remains locked.` };
 			}
 			await fs.unlink(lockPath).catch(() => undefined);
 		}
 	}
 
-	return { error: `Failed to acquire lock for issue ${id}.` };
+	return { error: `Failed to acquire lock for todo ${id}.` };
 }
 
-async function withIssueLock<T>(
-	issuesDir: string,
+async function withTodoLock<T>(
+	todosDir: string,
 	id: string,
 	ctx: ExtensionContext,
 	fn: () => Promise<T>,
 ): Promise<T | { error: string }> {
-	const lock = await acquireLock(issuesDir, id, ctx);
+	const lock = await acquireLock(todosDir, id, ctx);
 	if (typeof lock === "object" && "error" in lock) return lock;
 	try {
 		return await fn();
@@ -274,24 +274,24 @@ async function withIssueLock<T>(
 	}
 }
 
-async function listIssues(issuesDir: string): Promise<IssueFrontMatter[]> {
+async function listTodos(todosDir: string): Promise<TodoFrontMatter[]> {
 	let entries: string[] = [];
 	try {
-		entries = await fs.readdir(issuesDir);
+		entries = await fs.readdir(todosDir);
 	} catch {
 		return [];
 	}
 
-	const issues: IssueFrontMatter[] = [];
+	const todos: TodoFrontMatter[] = [];
 	for (const entry of entries) {
 		if (!entry.endsWith(".md")) continue;
 		const id = entry.slice(0, -3);
-		const filePath = path.join(issuesDir, entry);
+		const filePath = path.join(todosDir, entry);
 		try {
 			const content = await fs.readFile(filePath, "utf8");
 			const { frontMatter } = splitFrontMatter(content);
 			const parsed = parseFrontMatter(frontMatter, id);
-			issues.push({
+			todos.push({
 				id,
 				title: parsed.title,
 				tags: parsed.tags ?? [],
@@ -299,53 +299,53 @@ async function listIssues(issuesDir: string): Promise<IssueFrontMatter[]> {
 				created_at: parsed.created_at,
 			});
 		} catch {
-			// ignore unreadable issue
+			// ignore unreadable todo
 		}
 	}
 
-	issues.sort((a, b) => a.created_at.localeCompare(b.created_at));
-	return issues;
+	todos.sort((a, b) => a.created_at.localeCompare(b.created_at));
+	return todos;
 }
 
-function formatIssueList(issues: IssueFrontMatter[]): string {
-	if (!issues.length) return "No issues.";
-	return issues
-		.map((issue) => {
-			const tagText = issue.tags.length ? ` [${issue.tags.join(", ")}]` : "";
-			return `#${issue.id} (${issue.status}) ${issue.title}${tagText}`;
+function formatTodoList(todos: TodoFrontMatter[]): string {
+	if (!todos.length) return "No todos.";
+	return todos
+		.map((todo) => {
+			const tagText = todo.tags.length ? ` [${todo.tags.join(", ")}]` : "";
+			return `#${todo.id} (${todo.status}) ${todo.title}${tagText}`;
 		})
 		.join("\n");
 }
 
-async function ensureIssueExists(filePath: string, id: string): Promise<IssueRecord | null> {
+async function ensureTodoExists(filePath: string, id: string): Promise<TodoRecord | null> {
 	if (!existsSync(filePath)) return null;
-	return readIssueFile(filePath, id);
+	return readTodoFile(filePath, id);
 }
 
-async function appendIssueBody(filePath: string, issue: IssueRecord, text: string): Promise<IssueRecord> {
-	const spacer = issue.body.trim().length ? "\n\n" : "";
-	issue.body = `${issue.body.replace(/\s+$/, "")}${spacer}${text.trim()}\n`;
-	await writeIssueFile(filePath, issue);
-	return issue;
+async function appendTodoBody(filePath: string, todo: TodoRecord, text: string): Promise<TodoRecord> {
+	const spacer = todo.body.trim().length ? "\n\n" : "";
+	todo.body = `${todo.body.replace(/\s+$/, "")}${spacer}${text.trim()}\n`;
+	await writeTodoFile(filePath, todo);
+	return todo;
 }
 
-export default function issuesExtension(pi: ExtensionAPI) {
+export default function todosExtension(pi: ExtensionAPI) {
 	pi.registerTool({
-		name: "issue",
-		label: "Issue",
-		description: "Manage file-based issues in .pi/issues (list, get, create, update, append)",
-		parameters: IssueParams,
+		name: "todo",
+		label: "Todo",
+		description: "Manage file-based todos in .pi/todos (list, get, create, update, append)",
+		parameters: TodoParams,
 
 		async execute(_toolCallId, params, _onUpdate, ctx) {
-			const issuesDir = getIssuesDir(ctx.cwd);
-			const action: IssueAction = params.action;
+			const todosDir = getTodosDir(ctx.cwd);
+			const action: TodoAction = params.action;
 
 			switch (action) {
 				case "list": {
-					const issues = await listIssues(issuesDir);
+					const todos = await listTodos(todosDir);
 					return {
-						content: [{ type: "text", text: formatIssueList(issues) }],
-						details: { issues },
+						content: [{ type: "text", text: formatTodoList(todos) }],
+						details: { todos },
 					};
 				}
 
@@ -356,17 +356,17 @@ export default function issuesExtension(pi: ExtensionAPI) {
 							details: { error: "id required" },
 						};
 					}
-					const filePath = getIssuePath(issuesDir, params.id);
-					const issue = await ensureIssueExists(filePath, params.id);
-					if (!issue) {
+					const filePath = getTodoPath(todosDir, params.id);
+					const todo = await ensureTodoExists(filePath, params.id);
+					if (!todo) {
 						return {
-							content: [{ type: "text", text: `Issue ${params.id} not found` }],
+							content: [{ type: "text", text: `Todo ${params.id} not found` }],
 							details: { error: "not found" },
 						};
 					}
 					return {
-						content: [{ type: "text", text: serializeIssue(issue) }],
-						details: { issue },
+						content: [{ type: "text", text: serializeTodo(todo) }],
+						details: { todo },
 					};
 				}
 
@@ -377,10 +377,10 @@ export default function issuesExtension(pi: ExtensionAPI) {
 							details: { error: "title required" },
 						};
 					}
-					await ensureIssuesDir(issuesDir);
-					const id = await generateIssueId(issuesDir);
-					const filePath = getIssuePath(issuesDir, id);
-					const issue: IssueRecord = {
+					await ensureTodosDir(todosDir);
+					const id = await generateTodoId(todosDir);
+					const filePath = getTodoPath(todosDir, id);
+					const todo: TodoRecord = {
 						id,
 						title: params.title,
 						tags: params.tags ?? [],
@@ -389,9 +389,9 @@ export default function issuesExtension(pi: ExtensionAPI) {
 						body: params.body ?? "",
 					};
 
-					const result = await withIssueLock(issuesDir, id, ctx, async () => {
-						await writeIssueFile(filePath, issue);
-						return issue;
+					const result = await withTodoLock(todosDir, id, ctx, async () => {
+						await writeTodoFile(filePath, todo);
+						return todo;
 					});
 
 					if (typeof result === "object" && "error" in result) {
@@ -402,8 +402,8 @@ export default function issuesExtension(pi: ExtensionAPI) {
 					}
 
 					return {
-						content: [{ type: "text", text: `Created issue ${id}` }],
-						details: { issue },
+						content: [{ type: "text", text: `Created todo ${id}` }],
+						details: { todo },
 					};
 				}
 
@@ -414,16 +414,16 @@ export default function issuesExtension(pi: ExtensionAPI) {
 							details: { error: "id required" },
 						};
 					}
-					const filePath = getIssuePath(issuesDir, params.id);
+					const filePath = getTodoPath(todosDir, params.id);
 					if (!existsSync(filePath)) {
 						return {
-							content: [{ type: "text", text: `Issue ${params.id} not found` }],
+							content: [{ type: "text", text: `Todo ${params.id} not found` }],
 							details: { error: "not found" },
 						};
 					}
-					const result = await withIssueLock(issuesDir, params.id, ctx, async () => {
-						const existing = await ensureIssueExists(filePath, params.id);
-						if (!existing) return { error: `Issue ${params.id} not found` } as const;
+					const result = await withTodoLock(todosDir, params.id, ctx, async () => {
+						const existing = await ensureTodoExists(filePath, params.id);
+						if (!existing) return { error: `Todo ${params.id} not found` } as const;
 
 						existing.id = params.id;
 						if (params.title !== undefined) existing.title = params.title;
@@ -431,7 +431,7 @@ export default function issuesExtension(pi: ExtensionAPI) {
 						if (params.tags !== undefined) existing.tags = params.tags;
 						if (!existing.created_at) existing.created_at = new Date().toISOString();
 
-						await writeIssueFile(filePath, existing);
+						await writeTodoFile(filePath, existing);
 						return existing;
 					});
 
@@ -443,8 +443,8 @@ export default function issuesExtension(pi: ExtensionAPI) {
 					}
 
 					return {
-						content: [{ type: "text", text: `Updated issue ${params.id}` }],
-						details: { issue: result },
+						content: [{ type: "text", text: `Updated todo ${params.id}` }],
+						details: { todo: result },
 					};
 				}
 
@@ -461,17 +461,17 @@ export default function issuesExtension(pi: ExtensionAPI) {
 							details: { error: "body required" },
 						};
 					}
-					const filePath = getIssuePath(issuesDir, params.id);
+					const filePath = getTodoPath(todosDir, params.id);
 					if (!existsSync(filePath)) {
 						return {
-							content: [{ type: "text", text: `Issue ${params.id} not found` }],
+							content: [{ type: "text", text: `Todo ${params.id} not found` }],
 							details: { error: "not found" },
 						};
 					}
-					const result = await withIssueLock(issuesDir, params.id, ctx, async () => {
-						const existing = await ensureIssueExists(filePath, params.id);
-						if (!existing) return { error: `Issue ${params.id} not found` } as const;
-						const updated = await appendIssueBody(filePath, existing, params.body!);
+					const result = await withTodoLock(todosDir, params.id, ctx, async () => {
+						const existing = await ensureTodoExists(filePath, params.id);
+						if (!existing) return { error: `Todo ${params.id} not found` } as const;
+						const updated = await appendTodoBody(filePath, existing, params.body!);
 						return updated;
 					});
 
@@ -483,20 +483,20 @@ export default function issuesExtension(pi: ExtensionAPI) {
 					}
 
 					return {
-						content: [{ type: "text", text: `Appended to issue ${params.id}` }],
-						details: { issue: result },
+						content: [{ type: "text", text: `Appended to todo ${params.id}` }],
+						details: { todo: result },
 					};
 				}
 			}
 		},
 	});
 
-	pi.registerCommand("issues", {
-		description: "List issues from .pi/issues",
+	pi.registerCommand("todos", {
+		description: "List todos from .pi/todos",
 		handler: async (_args, ctx) => {
-			const issuesDir = getIssuesDir(ctx.cwd);
-			const issues = await listIssues(issuesDir);
-			const text = formatIssueList(issues);
+			const todosDir = getTodosDir(ctx.cwd);
+			const todos = await listTodos(todosDir);
+			const text = formatTodoList(todos);
 			if (ctx.hasUI) {
 				ctx.ui.notify(text, "info");
 			} else {
@@ -505,36 +505,36 @@ export default function issuesExtension(pi: ExtensionAPI) {
 		},
 	});
 
-	pi.registerCommand("issue-log", {
-		description: "Append text to an issue body",
+	pi.registerCommand("todo-log", {
+		description: "Append text to a todo body",
 		handler: async (args, ctx) => {
 			const id = (args ?? "").trim();
 			if (!id) {
-				ctx.ui.notify("Usage: /issue-log <id>", "error");
+				ctx.ui.notify("Usage: /todo-log <id>", "error");
 				return;
 			}
 			if (!ctx.hasUI) {
-				ctx.ui.notify("/issue-log requires interactive mode", "error");
+				ctx.ui.notify("/todo-log requires interactive mode", "error");
 				return;
 			}
 
-			const issuesDir = getIssuesDir(ctx.cwd);
-			const filePath = getIssuePath(issuesDir, id);
+			const todosDir = getTodosDir(ctx.cwd);
+			const filePath = getTodoPath(todosDir, id);
 			if (!existsSync(filePath)) {
-				ctx.ui.notify(`Issue ${id} not found`, "error");
+				ctx.ui.notify(`Todo ${id} not found`, "error");
 				return;
 			}
 
-			const text = await ctx.ui.editor(`Append to issue ${id}:`, "");
+			const text = await ctx.ui.editor(`Append to todo ${id}:`, "");
 			if (!text?.trim()) {
 				ctx.ui.notify("No text provided", "warning");
 				return;
 			}
 
-			const result = await withIssueLock(issuesDir, id, ctx, async () => {
-				const existing = await ensureIssueExists(filePath, id);
-				if (!existing) return { error: `Issue ${id} not found` } as const;
-				return appendIssueBody(filePath, existing, text);
+			const result = await withTodoLock(todosDir, id, ctx, async () => {
+				const existing = await ensureTodoExists(filePath, id);
+				if (!existing) return { error: `Todo ${id} not found` } as const;
+				return appendTodoBody(filePath, existing, text);
 			});
 
 			if (typeof result === "object" && "error" in result) {
@@ -542,7 +542,7 @@ export default function issuesExtension(pi: ExtensionAPI) {
 				return;
 			}
 
-			ctx.ui.notify(`Appended to issue ${id}`, "info");
+			ctx.ui.notify(`Appended to todo ${id}`, "info");
 		},
 	});
 }
