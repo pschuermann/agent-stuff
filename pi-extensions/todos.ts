@@ -42,7 +42,7 @@ interface LockInfo {
 }
 
 const TodoParams = Type.Object({
-	action: StringEnum(["list", "list-all", "get", "create", "update", "append"] as const),
+	action: StringEnum(["list", "list-all", "get", "create", "update", "append", "delete"] as const),
 	id: Type.Optional(Type.String({ description: "Todo id (filename)" })),
 	title: Type.Optional(Type.String({ description: "Todo title" })),
 	status: Type.Optional(Type.String({ description: "Todo status" })),
@@ -50,13 +50,13 @@ const TodoParams = Type.Object({
 	body: Type.Optional(Type.String({ description: "Todo body or append text" })),
 });
 
-type TodoAction = "list" | "list-all" | "get" | "create" | "update" | "append";
+type TodoAction = "list" | "list-all" | "get" | "create" | "update" | "append" | "delete";
 
-type TodoOverlayAction = "refine" | "close" | "reopen" | "work" | "cancel";
+type TodoOverlayAction = "refine" | "close" | "reopen" | "work" | "delete" | "cancel";
 
 type TodoToolDetails =
 	| { action: "list" | "list-all"; todos: TodoFrontMatter[]; error?: string }
-	| { action: "get" | "create" | "update" | "append"; todo: TodoRecord; error?: string };
+	| { action: "get" | "create" | "update" | "append" | "delete"; todo: TodoRecord; error?: string };
 
 function isTodoClosed(status: string): boolean {
 	return ["closed", "done"].includes(status.toLowerCase());
@@ -356,6 +356,10 @@ class TodoDetailOverlayComponent {
 			this.onAction("work");
 			return;
 		}
+		if (keyData === "d" || keyData === "D") {
+			this.onAction("delete");
+			return;
+		}
 	}
 
 	render(width: number): string[] {
@@ -446,8 +450,9 @@ class TodoDetailOverlayComponent {
 			this.theme.fg(closed ? "dim" : "muted", " close task");
 		const reopen = this.theme.fg(closed ? "accent" : "dim", "o") +
 			this.theme.fg(closed ? "muted" : "dim", " reopen task");
+		const del = this.theme.fg("error", "d") + this.theme.fg("muted", " delete todo");
 		const back = this.theme.fg("dim", "esc back");
-		const pieces = [refine, work, close, reopen, back];
+		const pieces = [refine, work, close, reopen, del, back];
 
 		let line = pieces.join(this.theme.fg("muted", " • "));
 		if (this.totalLines > this.viewHeight) {
@@ -919,11 +924,35 @@ async function updateTodoStatus(
 	return result;
 }
 
+async function deleteTodo(
+	todosDir: string,
+	id: string,
+	ctx: ExtensionContext,
+): Promise<TodoRecord | { error: string }> {
+	const filePath = getTodoPath(todosDir, id);
+	if (!existsSync(filePath)) {
+		return { error: `Todo ${id} not found` };
+	}
+
+	const result = await withTodoLock(todosDir, id, ctx, async () => {
+		const existing = await ensureTodoExists(filePath, id);
+		if (!existing) return { error: `Todo ${id} not found` } as const;
+		await fs.unlink(filePath);
+		return existing;
+	});
+
+	if (typeof result === "object" && "error" in result) {
+		return { error: result.error };
+	}
+
+	return result;
+}
+
 export default function todosExtension(pi: ExtensionAPI) {
 	pi.registerTool({
 		name: "todo",
 		label: "Todo",
-		description: "Manage file-based todos in .pi/todos (list, list-all, get, create, update, append)",
+		description: "Manage file-based todos in .pi/todos (list, list-all, get, create, update, append, delete)",
 		parameters: TodoParams,
 
 		async execute(_toolCallId, params, _onUpdate, ctx) {
@@ -1089,8 +1118,31 @@ export default function todosExtension(pi: ExtensionAPI) {
 						details: { action: "append", todo: updatedTodo },
 					};
 				}
+
+				case "delete": {
+					if (!params.id) {
+						return {
+							content: [{ type: "text", text: "Error: id required" }],
+							details: { action: "delete", error: "id required" },
+						};
+					}
+
+					const result = await deleteTodo(todosDir, params.id, ctx);
+					if (typeof result === "object" && "error" in result) {
+						return {
+							content: [{ type: "text", text: result.error }],
+							details: { action: "delete", error: result.error },
+						};
+					}
+
+					return {
+						content: [{ type: "text", text: serializeTodoForAgent(result as TodoRecord) }],
+						details: { action: "delete", todo: result as TodoRecord },
+					};
+				}
 			}
 		},
+
 
 		renderCall(args, theme) {
 			const action = typeof args.action === "string" ? args.action : "";
@@ -1144,7 +1196,9 @@ export default function todosExtension(pi: ExtensionAPI) {
 						? "Updated"
 						: details.action === "append"
 							? "Appended to"
-							: null;
+							: details.action === "delete"
+								? "Deleted"
+								: null;
 			if (actionLabel) {
 				const lines = text.split("\n");
 				lines[0] = theme.fg("success", "✓ ") + theme.fg("muted", `${actionLabel} `) + lines[0];
@@ -1217,6 +1271,25 @@ export default function todosExtension(pi: ExtensionAPI) {
 						const title = record.title || "(untitled)";
 						nextPrompt = `work on todo #${record.id} "${title}"`;
 						done();
+						return;
+					}
+
+					if (action === "delete") {
+						const ok = await ctx.ui.confirm(
+							"Delete todo",
+							`Delete todo ${record.id}? This cannot be undone.`,
+						);
+						if (!ok) {
+							return;
+						}
+						const result = await deleteTodo(todosDir, record.id, ctx);
+						if ("error" in result) {
+							ctx.ui.notify(result.error, "error");
+							return;
+						}
+						const updatedTodos = await listTodos(todosDir);
+						selector.setTodos(updatedTodos);
+						ctx.ui.notify(`Deleted todo ${record.id}`, "info");
 						return;
 					}
 
