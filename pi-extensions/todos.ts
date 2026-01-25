@@ -54,6 +54,10 @@ type TodoAction = "list" | "get" | "create" | "update" | "append";
 
 type TodoOverlayAction = "refine" | "close" | "reopen" | "work" | "cancel";
 
+type TodoToolDetails =
+	| { action: "list"; todos: TodoFrontMatter[]; error?: string }
+	| { action: "get" | "create" | "update" | "append"; todo: TodoRecord; error?: string };
+
 function isTodoClosed(status: string): boolean {
 	return ["closed", "done"].includes(status.toLowerCase());
 }
@@ -761,14 +765,115 @@ function listTodosSync(todosDir: string): TodoFrontMatter[] {
 	return sortTodos(todos);
 }
 
+function getTodoTitle(todo: TodoFrontMatter): string {
+	return todo.title || "(untitled)";
+}
+
+function getTodoStatus(todo: TodoFrontMatter): string {
+	return todo.status || "open";
+}
+
+function formatTodoSummaryLine(todo: TodoFrontMatter): string {
+	const tagText = todo.tags.length ? ` [${todo.tags.join(", ")}]` : "";
+	return `#${todo.id} (${getTodoStatus(todo)}) ${getTodoTitle(todo)}${tagText}`;
+}
+
+function splitTodosByStatus(todos: TodoFrontMatter[]): { openTodos: TodoFrontMatter[]; closedTodos: TodoFrontMatter[] } {
+	const openTodos: TodoFrontMatter[] = [];
+	const closedTodos: TodoFrontMatter[] = [];
+	for (const todo of todos) {
+		if (isTodoClosed(getTodoStatus(todo))) {
+			closedTodos.push(todo);
+		} else {
+			openTodos.push(todo);
+		}
+	}
+	return { openTodos, closedTodos };
+}
+
 function formatTodoList(todos: TodoFrontMatter[]): string {
 	if (!todos.length) return "No todos.";
-	return todos
-		.map((todo) => {
-			const tagText = todo.tags.length ? ` [${todo.tags.join(", ")}]` : "";
-			return `#${todo.id} (${todo.status}) ${todo.title}${tagText}`;
-		})
-		.join("\n");
+
+	const { openTodos, closedTodos } = splitTodosByStatus(todos);
+	const lines: string[] = [];
+	const pushSection = (label: string, sectionTodos: TodoFrontMatter[]) => {
+		lines.push(`${label} (${sectionTodos.length}):`);
+		if (!sectionTodos.length) {
+			lines.push("  none");
+			return;
+		}
+		for (const todo of sectionTodos) {
+			lines.push(`  ${formatTodoSummaryLine(todo)}`);
+		}
+	};
+
+	pushSection("Open todos", openTodos);
+	lines.push("");
+	pushSection("Closed todos", closedTodos);
+	return lines.join("\n");
+}
+
+function renderTodoSummaryLine(theme: Theme, todo: TodoFrontMatter): string {
+	const closed = isTodoClosed(getTodoStatus(todo));
+	const statusColor = closed ? "dim" : "success";
+	const titleColor = closed ? "dim" : "fg";
+	const tagText = todo.tags.length ? theme.fg("dim", ` [${todo.tags.join(", ")}]`) : "";
+	return (
+		theme.fg("accent", `#${todo.id}`) +
+		" " +
+		theme.fg(titleColor, getTodoTitle(todo)) +
+		" " +
+		theme.fg(statusColor, `(${getTodoStatus(todo)})`) +
+		tagText
+	);
+}
+
+function renderTodoList(theme: Theme, todos: TodoFrontMatter[], expanded: boolean): string {
+	if (!todos.length) return theme.fg("dim", "No todos");
+
+	const { openTodos, closedTodos } = splitTodosByStatus(todos);
+	const lines: string[] = [];
+	const pushSection = (label: string, sectionTodos: TodoFrontMatter[]) => {
+		lines.push(theme.fg("muted", `${label} (${sectionTodos.length})`));
+		if (!sectionTodos.length) {
+			lines.push(theme.fg("dim", "  none"));
+			return;
+		}
+		const maxItems = expanded ? sectionTodos.length : Math.min(sectionTodos.length, 3);
+		for (let i = 0; i < maxItems; i++) {
+			lines.push(`  ${renderTodoSummaryLine(theme, sectionTodos[i])}`);
+		}
+		if (!expanded && sectionTodos.length > maxItems) {
+			lines.push(theme.fg("dim", `  ... ${sectionTodos.length - maxItems} more`));
+		}
+	};
+
+	pushSection("Open todos", openTodos);
+	lines.push("");
+	pushSection("Closed todos", closedTodos);
+	return lines.join("\n");
+}
+
+function renderTodoDetail(theme: Theme, todo: TodoRecord, expanded: boolean): string {
+	const summary = renderTodoSummaryLine(theme, todo);
+	if (!expanded) return summary;
+
+	const tags = todo.tags.length ? todo.tags.join(", ") : "none";
+	const createdAt = todo.created_at || "unknown";
+	const bodyText = todo.body?.trim() ? todo.body.trim() : "No details yet.";
+	const bodyLines = bodyText.split("\n");
+
+	const lines = [
+		summary,
+		theme.fg("muted", `Status: ${getTodoStatus(todo)}`),
+		theme.fg("muted", `Tags: ${tags}`),
+		theme.fg("muted", `Created: ${createdAt}`),
+		"",
+		theme.fg("muted", "Body:"),
+		...bodyLines.map((line) => theme.fg("fg", `  ${line}`)),
+	];
+
+	return lines.join("\n");
 }
 
 async function ensureTodoExists(filePath: string, id: string): Promise<TodoRecord | null> {
@@ -825,7 +930,7 @@ export default function todosExtension(pi: ExtensionAPI) {
 					const todos = await listTodos(todosDir);
 					return {
 						content: [{ type: "text", text: formatTodoList(todos) }],
-						details: { todos },
+						details: { action: "list", todos },
 					};
 				}
 
@@ -833,7 +938,7 @@ export default function todosExtension(pi: ExtensionAPI) {
 					if (!params.id) {
 						return {
 							content: [{ type: "text", text: "Error: id required" }],
-							details: { error: "id required" },
+							details: { action: "get", error: "id required" },
 						};
 					}
 					const filePath = getTodoPath(todosDir, params.id);
@@ -841,12 +946,12 @@ export default function todosExtension(pi: ExtensionAPI) {
 					if (!todo) {
 						return {
 							content: [{ type: "text", text: `Todo ${params.id} not found` }],
-							details: { error: "not found" },
+							details: { action: "get", error: "not found" },
 						};
 					}
 					return {
-						content: [{ type: "text", text: serializeTodo(todo) }],
-						details: { todo },
+						content: [{ type: "text", text: formatTodoSummaryLine(todo) }],
+						details: { action: "get", todo },
 					};
 				}
 
@@ -854,7 +959,7 @@ export default function todosExtension(pi: ExtensionAPI) {
 					if (!params.title) {
 						return {
 							content: [{ type: "text", text: "Error: title required" }],
-							details: { error: "title required" },
+							details: { action: "create", error: "title required" },
 						};
 					}
 					await ensureTodosDir(todosDir);
@@ -877,13 +982,13 @@ export default function todosExtension(pi: ExtensionAPI) {
 					if (typeof result === "object" && "error" in result) {
 						return {
 							content: [{ type: "text", text: result.error }],
-							details: { error: result.error },
+							details: { action: "create", error: result.error },
 						};
 					}
 
 					return {
-						content: [{ type: "text", text: `Created todo ${id}` }],
-						details: { todo },
+						content: [{ type: "text", text: `Created ${formatTodoSummaryLine(todo)}` }],
+						details: { action: "create", todo },
 					};
 				}
 
@@ -891,14 +996,14 @@ export default function todosExtension(pi: ExtensionAPI) {
 					if (!params.id) {
 						return {
 							content: [{ type: "text", text: "Error: id required" }],
-							details: { error: "id required" },
+							details: { action: "update", error: "id required" },
 						};
 					}
 					const filePath = getTodoPath(todosDir, params.id);
 					if (!existsSync(filePath)) {
 						return {
 							content: [{ type: "text", text: `Todo ${params.id} not found` }],
-							details: { error: "not found" },
+							details: { action: "update", error: "not found" },
 						};
 					}
 					const result = await withTodoLock(todosDir, params.id, ctx, async () => {
@@ -909,7 +1014,7 @@ export default function todosExtension(pi: ExtensionAPI) {
 						if (params.title !== undefined) existing.title = params.title;
 						if (params.status !== undefined) existing.status = params.status;
 						if (params.tags !== undefined) existing.tags = params.tags;
-					if (params.body !== undefined) existing.body = params.body;
+						if (params.body !== undefined) existing.body = params.body;
 						if (!existing.created_at) existing.created_at = new Date().toISOString();
 
 						await writeTodoFile(filePath, existing);
@@ -919,13 +1024,14 @@ export default function todosExtension(pi: ExtensionAPI) {
 					if (typeof result === "object" && "error" in result) {
 						return {
 							content: [{ type: "text", text: result.error }],
-							details: { error: result.error },
+							details: { action: "update", error: result.error },
 						};
 					}
 
+					const updatedTodo = result as TodoRecord;
 					return {
-						content: [{ type: "text", text: `Updated todo ${params.id}` }],
-						details: { todo: result },
+						content: [{ type: "text", text: `Updated ${formatTodoSummaryLine(updatedTodo)}` }],
+						details: { action: "update", todo: updatedTodo },
 					};
 				}
 
@@ -933,20 +1039,20 @@ export default function todosExtension(pi: ExtensionAPI) {
 					if (!params.id) {
 						return {
 							content: [{ type: "text", text: "Error: id required" }],
-							details: { error: "id required" },
+							details: { action: "append", error: "id required" },
 						};
 					}
 					if (!params.body) {
 						return {
 							content: [{ type: "text", text: "Error: body required" }],
-							details: { error: "body required" },
+							details: { action: "append", error: "body required" },
 						};
 					}
 					const filePath = getTodoPath(todosDir, params.id);
 					if (!existsSync(filePath)) {
 						return {
 							content: [{ type: "text", text: `Todo ${params.id} not found` }],
-							details: { error: "not found" },
+							details: { action: "append", error: "not found" },
 						};
 					}
 					const result = await withTodoLock(todosDir, params.id, ctx, async () => {
@@ -959,16 +1065,68 @@ export default function todosExtension(pi: ExtensionAPI) {
 					if (typeof result === "object" && "error" in result) {
 						return {
 							content: [{ type: "text", text: result.error }],
-							details: { error: result.error },
+							details: { action: "append", error: result.error },
 						};
 					}
 
+					const updatedTodo = result as TodoRecord;
 					return {
-						content: [{ type: "text", text: `Appended to todo ${params.id}` }],
-						details: { todo: result },
+						content: [{ type: "text", text: `Appended to ${formatTodoSummaryLine(updatedTodo)}` }],
+						details: { action: "append", todo: updatedTodo },
 					};
 				}
 			}
+		},
+
+		renderCall(args, theme) {
+			const action = typeof args.action === "string" ? args.action : "";
+			const id = typeof args.id === "string" ? args.id : "";
+			const title = typeof args.title === "string" ? args.title : "";
+			let text = theme.fg("toolTitle", theme.bold("todo ")) + theme.fg("muted", action);
+			if (id) {
+				text += " " + theme.fg("accent", `#${id}`);
+			}
+			if (title) {
+				text += " " + theme.fg("dim", `"${title}"`);
+			}
+			return new Text(text, 0, 0);
+		},
+
+		renderResult(result, { expanded }, theme) {
+			const details = result.details as TodoToolDetails | undefined;
+			if (!details) {
+				const text = result.content[0];
+				return new Text(text?.type === "text" ? text.text : "", 0, 0);
+			}
+
+			if (details.error) {
+				return new Text(theme.fg("error", `Error: ${details.error}`), 0, 0);
+			}
+
+			if (details.action === "list") {
+				return new Text(renderTodoList(theme, details.todos, expanded), 0, 0);
+			}
+
+			if (!details.todo) {
+				const text = result.content[0];
+				return new Text(text?.type === "text" ? text.text : "", 0, 0);
+			}
+
+			let text = renderTodoDetail(theme, details.todo, expanded);
+			const actionLabel =
+				details.action === "create"
+					? "Created"
+					: details.action === "update"
+						? "Updated"
+						: details.action === "append"
+							? "Appended to"
+							: null;
+			if (actionLabel) {
+				const lines = text.split("\n");
+				lines[0] = theme.fg("success", "✓ ") + theme.fg("muted", `${actionLabel} `) + lines[0];
+				text = lines.join("\n");
+			}
+			return new Text(text, 0, 0);
 		},
 	});
 
