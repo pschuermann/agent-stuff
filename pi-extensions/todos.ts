@@ -952,7 +952,7 @@ export default function todosExtension(pi: ExtensionAPI) {
 	pi.registerTool({
 		name: "todo",
 		label: "Todo",
-		description: "Manage file-based todos in .pi/todos (list, list-all, get, create, update, append, delete)",
+		description: "Manage file-based todos in .pi/todos (list, list-all, get, create, update, append, delete). Close todos when the work is done.",
 		parameters: TodoParams,
 
 		async execute(_toolCallId, params, _onUpdate, ctx) {
