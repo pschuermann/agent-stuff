@@ -451,7 +451,7 @@ async function handleCommand(
 // Server Management
 // ============================================================================
 
-function createServer(pi: ExtensionAPI, state: SocketState, socketPath: string): net.Server {
+async function createServer(pi: ExtensionAPI, state: SocketState, socketPath: string): Promise<net.Server> {
 	const server = net.createServer((socket) => {
 		socket.setEncoding("utf8");
 		let buffer = "";
@@ -480,7 +480,15 @@ function createServer(pi: ExtensionAPI, state: SocketState, socketPath: string):
 		});
 	});
 
-	server.listen(socketPath);
+	// Wait for server to start listening, with error handling
+	await new Promise<void>((resolve, reject) => {
+		server.once("error", reject);
+		server.listen(socketPath, () => {
+			server.removeListener("error", reject);
+			resolve();
+		});
+	});
+
 	return server;
 }
 
@@ -589,7 +597,7 @@ async function startControlServer(pi: ExtensionAPI, state: SocketState, ctx: Ext
 
 	state.context = ctx;
 	state.socketPath = socketPath;
-	state.server = createServer(pi, state, socketPath);
+	state.server = await createServer(pi, state, socketPath);
 }
 
 async function stopControlServer(state: SocketState): Promise<void> {
