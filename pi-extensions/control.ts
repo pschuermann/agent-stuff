@@ -653,6 +653,8 @@ export default function (pi: ExtensionAPI) {
 		turnEndSubscriptions: [],
 	};
 
+	let toolRegistered = false;
+
 	const refreshServer = async (ctx: ExtensionContext) => {
 		const enabled = pi.getFlag(CONTROL_FLAG) === true;
 		if (!enabled) {
@@ -664,6 +666,12 @@ export default function (pi: ExtensionAPI) {
 		await startControlServer(pi, state, ctx);
 		updateStatus(ctx, true);
 		updateSessionEnv(ctx, true);
+
+		// Register tool only once when session-control is enabled
+		if (!toolRegistered) {
+			toolRegistered = true;
+			registerSessionTool(pi, state);
+		}
 	};
 
 	pi.on("session_start", async (_event, ctx) => {
@@ -700,11 +708,13 @@ export default function (pi: ExtensionAPI) {
 			});
 		}
 	});
+}
 
-	// ========================================================================
-	// Tool: send_to_session
-	// ========================================================================
+// ============================================================================
+// Tool: send_to_session
+// ============================================================================
 
+function registerSessionTool(pi: ExtensionAPI, state: SocketState): void {
 	pi.registerTool({
 		name: "send_to_session",
 		label: "Send To Session",
