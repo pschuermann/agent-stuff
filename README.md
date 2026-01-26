@@ -2,6 +2,8 @@
 
 This repository contains command files and skills that I use in some form with projects.  Note that I usually fine-tune these for projects so they might not work without modification for you.
 
+It is released on npm as `mitsupi` for use with the [Pi](https://buildwithpi.ai/) package loader.
+
 ## Commands
 
 All command files are in the [`commands`](commands) folder:
@@ -34,6 +36,8 @@ The release management commands do not work without tuning!  But you can put cla
 All skill files are in the [`skills`](skills) folder:
 
 * [`/ghidra`](skills/ghidra) - Claude Skill for reverse engineering binaries using Ghidra's headless analyzer
+* [`/github`](skills/github) - Claude Skill for interacting with GitHub via the `gh` CLI (issues, PRs, runs, and APIs)
+* [`/openscad`](skills/openscad) - Claude Skill for creating and rendering OpenSCAD 3D models and exporting STL files
 * [`/web-browser`](skills/web-browser) - Claude Skill for using Puppeteer in a Node environment to browse the web
 * [`/tmux`](skills/tmux) - Claude Skill for driving tmux directly with keystrokes and pane output scraping
 * [`/sentry`](skills/sentry) - Alternative way to access Sentry as a Claude Skill for reading issues
