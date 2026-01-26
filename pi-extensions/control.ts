@@ -35,11 +35,11 @@
  *   Events are JSON objects with { type: "event", event, data?, subscriptionId? }
  */
 
-import type { ExtensionAPI, ExtensionContext, TurnEndEvent } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext, TurnEndEvent, MessageRenderer } from "@mariozechner/pi-coding-agent";
 import { getMarkdownTheme } from "@mariozechner/pi-coding-agent";
-import { complete, type Model, type Api, type UserMessage } from "@mariozechner/pi-ai";
+import { complete, type Model, type Api, type UserMessage, type TextContent } from "@mariozechner/pi-ai";
 import { StringEnum } from "@mariozechner/pi-ai";
-import { Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
+import { Box, Container, Markdown, Spacer, Text } from "@mariozechner/pi-tui";
 import { Type } from "@sinclair/typebox";
 import { promises as fs } from "node:fs";
 import * as net from "node:net";
@@ -49,6 +49,8 @@ import * as path from "node:path";
 const CONTROL_FLAG = "session-control";
 const CONTROL_DIR = path.join(os.homedir(), ".pi", "session-control");
 const SOCKET_SUFFIX = ".sock";
+const SESSION_MESSAGE_TYPE = "session-message";
+const SENDER_INFO_PATTERN = /<sender_info>[\s\S]*?<\/sender_info>/g;
 
 // ============================================================================
 // RPC Types
@@ -482,6 +484,41 @@ function getFirstEntryId(ctx: ExtensionContext): string | undefined {
 	return root?.id ?? entries[0]?.id;
 }
 
+function extractTextContent(content: string | Array<TextContent | { type: string }>): string {
+	if (typeof content === "string") return content;
+	return content
+		.filter((c): c is TextContent => c.type === "text")
+		.map((c) => c.text)
+		.join("\n");
+}
+
+function stripSenderInfo(text: string): string {
+	return text.replace(SENDER_INFO_PATTERN, "").trim();
+}
+
+const renderSessionMessage: MessageRenderer = (message, { expanded }, theme) => {
+	let text = stripSenderInfo(extractTextContent(message.content));
+	if (!text) text = "(no content)";
+
+	if (!expanded) {
+		const lines = text.split("\n");
+		if (lines.length > 5) {
+			text = `${lines.slice(0, 5).join("\n")}\n...`;
+		}
+	}
+
+	const box = new Box(1, 1, (t) => theme.bg("customMessageBg", t));
+	const label = theme.fg("customMessageLabel", `\x1b[1m[${message.customType}]\x1b[22m`);
+	box.addChild(new Text(label, 0, 0));
+	box.addChild(new Spacer(1));
+	box.addChild(
+		new Markdown(text, 0, 0, getMarkdownTheme(), {
+			color: (value: string) => theme.fg("customMessageText", value),
+		}),
+	);
+	return box;
+};
+
 // ============================================================================
 // Command Handlers
 // ============================================================================
@@ -648,11 +685,19 @@ async function handleCommand(
 
 		const mode = command.mode ?? "steer";
 		const isIdle = ctx.isIdle();
+		const customMessage = {
+			customType: SESSION_MESSAGE_TYPE,
+			content: message,
+			display: true,
+		};
 
 		if (isIdle) {
-			pi.sendUserMessage(message);
+			pi.sendMessage(customMessage, { triggerTurn: true });
 		} else {
-			pi.sendUserMessage(message, { deliverAs: mode === "follow_up" ? "followUp" : "steer" });
+			pi.sendMessage(customMessage, {
+				triggerTurn: true,
+				deliverAs: mode === "follow_up" ? "followUp" : "steer",
+			});
 		}
 
 		respond(true, "send", { delivered: true, mode: isIdle ? "direct" : mode });
@@ -878,6 +923,8 @@ export default function (pi: ExtensionAPI) {
 		turnEndSubscriptions: [],
 	};
 
+	pi.registerMessageRenderer(SESSION_MESSAGE_TYPE, renderSessionMessage);
+
 	registerSessionTool(pi, state);
 	registerListSessionsTool(pi);
 	registerControlSessionsCommand(pi);
@@ -970,7 +1017,9 @@ Wait behavior (only for action=send):
 - wait_until=turn_end: Wait for the turn to complete, returns last assistant message.
 - wait_until=message_processed: Returns immediately after message is queued.
 
-Messages automatically include sender session info for replies.`,
+Note: If you ask the target session to reply back via sender_info, do not use wait_until; waiting is redundant and can duplicate responses.
+
+Messages automatically include sender session info for replies. When you want a response, instruct the target session to reply directly to the sender by calling send_to_session with the sender_info reference (do not poll get_message).`,
 		parameters: Type.Object({
 			sessionId: Type.Optional(Type.String({ description: "Target session id (UUID)" })),
 			sessionName: Type.Optional(Type.String({ description: "Target session name (alias)" })),
