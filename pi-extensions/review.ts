@@ -629,8 +629,8 @@ export default function reviewExtension(pi: ExtensionAPI) {
 
 		// Get PR reference from user
 		const prRef = await ctx.ui.editor(
-			"Enter PR number or URL:",
-			"123 or https://github.com/owner/repo/pull/123",
+			"Enter PR number or URL (e.g. 123 or https://github.com/owner/repo/pull/123):",
+			"",
 		);
 
 		if (!prRef?.trim()) return null;
