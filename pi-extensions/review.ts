@@ -415,61 +415,75 @@ export default function reviewExtension(pi: ExtensionAPI) {
 				description: preset.description,
 			}));
 
-		const result = await ctx.ui.custom<string | null>((tui, theme, _kb, done) => {
-			const container = new Container();
-			container.addChild(new DynamicBorder((str) => theme.fg("accent", str)));
-			container.addChild(new Text(theme.fg("accent", theme.bold("Select a review preset"))));
+		while (true) {
+			const result = await ctx.ui.custom<string | null>((tui, theme, _kb, done) => {
+				const container = new Container();
+				container.addChild(new DynamicBorder((str) => theme.fg("accent", str)));
+				container.addChild(new Text(theme.fg("accent", theme.bold("Select a review preset"))));
 
-			const selectList = new SelectList(items, Math.min(items.length, 10), {
-				selectedPrefix: (text) => theme.fg("accent", text),
-				selectedText: (text) => theme.fg("accent", text),
-				description: (text) => theme.fg("muted", text),
-				scrollInfo: (text) => theme.fg("dim", text),
-				noMatch: (text) => theme.fg("warning", text),
+				const selectList = new SelectList(items, Math.min(items.length, 10), {
+					selectedPrefix: (text) => theme.fg("accent", text),
+					selectedText: (text) => theme.fg("accent", text),
+					description: (text) => theme.fg("muted", text),
+					scrollInfo: (text) => theme.fg("dim", text),
+					noMatch: (text) => theme.fg("warning", text),
+				});
+
+				selectList.onSelect = (item) => done(item.value);
+				selectList.onCancel = () => done(null);
+
+				container.addChild(selectList);
+				container.addChild(new Text(theme.fg("dim", "Press enter to confirm or esc to go back")));
+				container.addChild(new DynamicBorder((str) => theme.fg("accent", str)));
+
+				return {
+					render(width: number) {
+						return container.render(width);
+					},
+					invalidate() {
+						container.invalidate();
+					},
+					handleInput(data: string) {
+						selectList.handleInput(data);
+						tui.requestRender();
+					},
+				};
 			});
 
-			selectList.onSelect = (item) => done(item.value);
-			selectList.onCancel = () => done(null);
+			if (!result) return null;
 
-			container.addChild(selectList);
-			container.addChild(new Text(theme.fg("dim", "Press enter to confirm or esc to go back")));
-			container.addChild(new DynamicBorder((str) => theme.fg("accent", str)));
+			// Handle each preset type
+			switch (result) {
+				case "uncommitted":
+					return { type: "uncommitted" };
 
-			return {
-				render(width: number) {
-					return container.render(width);
-				},
-				invalidate() {
-					container.invalidate();
-				},
-				handleInput(data: string) {
-					selectList.handleInput(data);
-					tui.requestRender();
-				},
-			};
-		});
+				case "baseBranch": {
+					const target = await showBranchSelector(ctx);
+					if (target) return target;
+					break;
+				}
 
-		if (!result) return null;
+				case "commit": {
+					const target = await showCommitSelector(ctx);
+					if (target) return target;
+					break;
+				}
 
-		// Handle each preset type
-		switch (result) {
-			case "uncommitted":
-				return { type: "uncommitted" };
+				case "custom": {
+					const target = await showCustomInput(ctx);
+					if (target) return target;
+					break;
+				}
 
-			case "baseBranch":
-				return await showBranchSelector(ctx);
+				case "pullRequest": {
+					const target = await showPrInput(ctx);
+					if (target) return target;
+					break;
+				}
 
-			case "commit":
-				return await showCommitSelector(ctx);
-
-			case "custom":
-				return await showCustomInput(ctx);
-
-			case "pullRequest":
-				return await showPrInput(ctx);
-
-			default:
-				return null;
+				default:
+					return null;
+			}
 		}
 	}
 
@@ -859,12 +873,16 @@ export default function reviewExtension(pi: ExtensionAPI) {
 
 			// Try to parse direct arguments
 			let target: ReviewTarget | null = null;
+			let fromSelector = false;
 			const parsed = parseArgs(args);
 
 			if (parsed) {
 				if (parsed.type === "pr") {
 					// Handle PR checkout (async operation)
 					target = await handlePrCheckout(ctx, parsed.ref);
+					if (!target) {
+						ctx.ui.notify("PR review failed. Returning to review menu.", "warning");
+					}
 				} else {
 					target = parsed;
 				}
@@ -872,35 +890,46 @@ export default function reviewExtension(pi: ExtensionAPI) {
 
 			// If no args or invalid args, show selector
 			if (!target) {
-				target = await showReviewSelector(ctx);
+				fromSelector = true;
 			}
 
-			if (!target) {
-				ctx.ui.notify("Review cancelled", "info");
-				return;
-			}
+			while (true) {
+				if (!target && fromSelector) {
+					target = await showReviewSelector(ctx);
+				}
 
-			// Determine if we should use fresh session mode
-			// Check if this is a new session (no messages yet)
-			const entries = ctx.sessionManager.getEntries();
-			const messageCount = entries.filter((e) => e.type === "message").length;
-
-			let useFreshSession = false;
-
-			if (messageCount > 0) {
-				// Existing session - ask user which mode they want
-				const choice = await ctx.ui.select("Start review in:", ["Empty branch", "Current session"]);
-
-				if (choice === undefined) {
+				if (!target) {
 					ctx.ui.notify("Review cancelled", "info");
 					return;
 				}
 
-				useFreshSession = choice === "Empty branch";
-			}
-			// If messageCount === 0, useFreshSession stays false (current session mode)
+				// Determine if we should use fresh session mode
+				// Check if this is a new session (no messages yet)
+				const entries = ctx.sessionManager.getEntries();
+				const messageCount = entries.filter((e) => e.type === "message").length;
 
-			await executeReview(ctx, target, useFreshSession);
+				let useFreshSession = false;
+
+				if (messageCount > 0) {
+					// Existing session - ask user which mode they want
+					const choice = await ctx.ui.select("Start review in:", ["Empty branch", "Current session"]);
+
+					if (choice === undefined) {
+						if (fromSelector) {
+							target = null;
+							continue;
+						}
+						ctx.ui.notify("Review cancelled", "info");
+						return;
+					}
+
+					useFreshSession = choice === "Empty branch";
+				}
+				// If messageCount === 0, useFreshSession stays false (current session mode)
+
+				await executeReview(ctx, target, useFreshSession);
+				return;
+			}
 		},
 	});
 
