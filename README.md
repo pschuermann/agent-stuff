@@ -38,6 +38,7 @@ All skill files are in the [`skills`](skills) folder:
 * [`/pi-share`](skills/pi-share) - Claude Skill for loading and parsing session transcripts from shittycodingagent.ai
 * [`/anachb`](skills/anachb) - Claude Skill for querying Austrian public transport (VOR AnachB) for departures, routes, and disruptions
 * [`/oebb-scotty`](skills/oebb-scotty) - Claude Skill for Austrian rail travel planning via ÖBB Scotty API
+* [`/frontend-design`](skills/frontend-design) - Claude Skill for designing and implementing distinctive frontend interfaces
 
 ### Browser
 
