@@ -16,6 +16,7 @@
  * - `/review uncommitted` - review uncommitted changes directly
  * - `/review branch main` - review against main branch
  * - `/review commit abc123` - review specific commit
+ * - `/review folder src docs` - review specific folders/files (snapshot, not diff)
  * - `/review custom "check for security issues"` - custom instructions
  *
  * Project-specific review guidelines:
@@ -93,7 +94,8 @@ type ReviewTarget =
 	| { type: "baseBranch"; branch: string }
 	| { type: "commit"; sha: string; title?: string }
 	| { type: "custom"; instructions: string }
-	| { type: "pullRequest"; prNumber: number; baseBranch: string; title: string };
+	| { type: "pullRequest"; prNumber: number; baseBranch: string; title: string }
+	| { type: "folder"; paths: string[] };
 
 // Prompts (adapted from Codex)
 const UNCOMMITTED_PROMPT =
@@ -115,6 +117,9 @@ const PULL_REQUEST_PROMPT =
 
 const PULL_REQUEST_PROMPT_FALLBACK =
 	'Review pull request #{prNumber} ("{title}") against the base branch \'{baseBranch}\'. Start by finding the merge base between the current branch and {baseBranch} (e.g., `git merge-base HEAD {baseBranch}`), then run `git diff` against that SHA to see the changes that would be merged. Provide prioritized, actionable findings.';
+
+const FOLDER_REVIEW_PROMPT =
+	"Review the code in the following paths: {paths}. This is a snapshot review (not a diff). Read the files directly in these paths and provide prioritized, actionable findings.";
 
 // The detailed review rubric (adapted from Codex's review_prompt.md)
 const REVIEW_RUBRIC = `# Review Guidelines
@@ -426,6 +431,9 @@ async function buildReviewPrompt(pi: ExtensionAPI, target: ReviewTarget): Promis
 				.replace(/{title}/g, target.title)
 				.replace(/{baseBranch}/g, target.baseBranch);
 		}
+
+		case "folder":
+			return FOLDER_REVIEW_PROMPT.replace("{paths}", target.paths.join(", "));
 	}
 }
 
@@ -449,6 +457,11 @@ function getUserFacingHint(target: ReviewTarget): string {
 			const shortTitle = target.title.length > 30 ? target.title.slice(0, 27) + "..." : target.title;
 			return `PR #${target.prNumber}: ${shortTitle}`;
 		}
+
+		case "folder": {
+			const joined = target.paths.join(", ");
+			return joined.length > 40 ? `folders: ${joined.slice(0, 37)}...` : `folders: ${joined}`;
+		}
 	}
 }
 
@@ -458,6 +471,7 @@ const REVIEW_PRESETS = [
 	{ value: "baseBranch", label: "Review against a base branch", description: "(local)" },
 	{ value: "uncommitted", label: "Review uncommitted changes", description: "" },
 	{ value: "commit", label: "Review a commit", description: "" },
+	{ value: "folder", label: "Review a folder (or more)", description: "(snapshot, not diff)" },
 	{ value: "custom", label: "Custom review instructions", description: "" },
 ] as const;
 
@@ -570,6 +584,12 @@ export default function reviewExtension(pi: ExtensionAPI) {
 
 				case "custom": {
 					const target = await showCustomInput(ctx);
+					if (target) return target;
+					break;
+				}
+
+				case "folder": {
+					const target = await showFolderInput(ctx);
 					if (target) return target;
 					break;
 				}
@@ -728,6 +748,29 @@ export default function reviewExtension(pi: ExtensionAPI) {
 
 		if (!result?.trim()) return null;
 		return { type: "custom", instructions: result.trim() };
+	}
+
+	function parseReviewPaths(value: string): string[] {
+		return value
+			.split(/\s+/)
+			.map((item) => item.trim())
+			.filter((item) => item.length > 0);
+	}
+
+	/**
+	 * Show folder input
+	 */
+	async function showFolderInput(ctx: ExtensionContext): Promise<ReviewTarget | null> {
+		const result = await ctx.ui.editor(
+			"Enter folders/files to review (space-separated or one per line):",
+			".",
+		);
+
+		if (!result?.trim()) return null;
+		const paths = parseReviewPaths(result);
+		if (paths.length === 0) return null;
+
+		return { type: "folder", paths };
 	}
 
 	/**
@@ -902,6 +945,12 @@ export default function reviewExtension(pi: ExtensionAPI) {
 				return { type: "custom", instructions };
 			}
 
+			case "folder": {
+				const paths = parseReviewPaths(parts.slice(1).join(" "));
+				if (paths.length === 0) return null;
+				return { type: "folder", paths };
+			}
+
 			case "pr": {
 				const ref = parts[1];
 				if (!ref) return null;
@@ -959,7 +1008,7 @@ export default function reviewExtension(pi: ExtensionAPI) {
 
 	// Register the /review command
 	pi.registerCommand("review", {
-		description: "Review code changes (PR, uncommitted, branch, commit, or custom)",
+		description: "Review code changes (PR, uncommitted, branch, commit, folder, or custom)",
 		handler: async (args, ctx) => {
 			if (!ctx.hasUI) {
 				ctx.ui.notify("Review requires interactive mode", "error");
