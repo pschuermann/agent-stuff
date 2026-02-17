@@ -1,0 +1,11 @@
+{
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "xero-node": "^9.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}

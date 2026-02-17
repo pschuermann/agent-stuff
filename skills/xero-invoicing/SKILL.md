@@ -5,7 +5,7 @@ description: "Create, manage, and send invoices and quotes in Xero. Use for bill
 
 # Xero Invoicing & Quotes
 
-Create and manage invoices and quotes via the Xero Accounting API. Requires `~/.xero/credentials` (see the `xero` skill for setup).
+Create and manage invoices and quotes via the `xero-node` SDK. Requires `~/.xero/config.json` (see the `xero` skill for setup). Run scripts from `skills/xero/` (where `npm install` was run).
 
 If the Xero MCP server is available, prefer its `create-invoice`, `update-invoice`, `list-invoices`, `create-quote`, `update-quote`, `list-quotes` tools over these scripts.
 
@@ -13,27 +13,27 @@ If the Xero MCP server is available, prefer its `create-invoice`, `update-invoic
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/list-invoices.sh [filters]` | List invoices with optional filters |
-| `scripts/get-invoice.sh <id-or-number>` | Get full invoice details |
-| `scripts/create-invoice.sh <json-file>` | Create an invoice from JSON |
-| `scripts/send-invoice.sh <invoice-id>` | Email invoice to the contact |
-| `scripts/list-quotes.sh [filters]` | List quotes with optional filters |
-| `scripts/create-quote.sh <json-file>` | Create a quote from JSON |
+| `npx tsx scripts/list-invoices.ts [filters]` | List invoices with optional filters |
+| `npx tsx scripts/get-invoice.ts <id-or-number>` | Get full invoice details |
+| `npx tsx scripts/create-invoice.ts <json-file>` | Create an invoice from JSON |
+| `npx tsx scripts/send-invoice.ts <invoice-id>` | Email invoice to the contact |
+| `npx tsx scripts/list-quotes.ts [filters]` | List quotes with optional filters |
+| `npx tsx scripts/create-quote.ts <json-file>` | Create a quote from JSON |
 
 ## Invoice Workflows
 
 ### Create and send an invoice
 
-1. Look up the contact: `xero/scripts/contacts.sh "Client Name"`
-2. Look up account codes: `xero/scripts/accounts.sh --type REVENUE`
+1. Look up the contact: `npx tsx xero/scripts/contacts.ts "Client Name"`
+2. Look up account codes: `npx tsx xero/scripts/accounts.ts --type REVENUE`
 3. Write the invoice JSON (see template below)
-4. Create: `scripts/create-invoice.sh /tmp/invoice.json`
-5. Send: `scripts/send-invoice.sh <InvoiceID>`
+4. Create: `npx tsx scripts/create-invoice.ts /tmp/invoice.json`
+5. Send: `npx tsx scripts/send-invoice.ts <InvoiceID>`
 
 ### Track overdue invoices
 
 ```bash
-scripts/list-invoices.sh --status AUTHORISED --overdue
+npx tsx scripts/list-invoices.ts --status AUTHORISED --overdue
 ```
 
 ### Void an invoice
@@ -41,7 +41,7 @@ scripts/list-invoices.sh --status AUTHORISED --overdue
 Only `AUTHORISED` (unpaid) invoices can be voided. `PAID` invoices must be unreconciled first.
 
 ```bash
-scripts/get-invoice.sh <id>  # Verify status is AUTHORISED
+npx tsx scripts/get-invoice.ts <id>  # Verify status is AUTHORISED
 # Then update status to VOIDED via the API
 ```
 
@@ -93,16 +93,16 @@ DELETED     DELETED        VOIDED
 
 1. Look up the contact
 2. Write the quote JSON (see template below)
-3. Create: `scripts/create-quote.sh /tmp/quote.json`
+3. Create: `npx tsx scripts/create-quote.ts /tmp/quote.json`
 4. Update status to `SENT` (requires a second API call with the full quote object)
 
 ### Convert a quote to an invoice
 
 Quotes cannot be directly converted via API. The workflow is:
 
-1. Get the quote: `scripts/list-quotes.sh --status ACCEPTED`
+1. Get the quote: `npx tsx scripts/list-quotes.ts --status ACCEPTED`
 2. Copy the line items and contact from the quote
-3. Create an invoice with those details: `scripts/create-invoice.sh`
+3. Create an invoice with those details: `npx tsx scripts/create-invoice.ts`
 4. Update the quote status to `INVOICED`
 
 ## Quote JSON Template
