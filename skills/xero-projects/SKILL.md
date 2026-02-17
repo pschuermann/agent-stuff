@@ -5,37 +5,37 @@ description: "Manage projects, tasks, and time tracking in Xero Projects. Use fo
 
 # Xero Projects
 
-Manage projects, tasks, and time entries via the Xero Projects API. Requires `~/.xero/credentials` with the `projects` scope (see the `xero` skill for setup).
+Manage projects, tasks, and time entries via the `xero-node` SDK. Requires `~/.xero/config.json` with the `projects` scope (see the `xero` skill for setup). Run scripts from `skills/xero/` (where `npm install` was run).
 
-**Important:** The Projects API uses a different base URL (`projects.xro/2.0`) than the Accounting API. Field names use `camelCase` (not `PascalCase`).
+**Important:** The Projects API uses `camelCase` field names (not `PascalCase` like the Accounting API). The SDK handles this transparently.
 
 ## Quick Reference
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/list-projects.sh [filters]` | List projects |
-| `scripts/create-project.sh <args>` | Create a new project |
-| `scripts/tasks.sh <project-id> [args]` | List or create tasks |
-| `scripts/log-time.sh <project-id> <args>` | Log a time entry |
-| `scripts/project-summary.sh <project-id>` | Financial summary of a project |
+| `npx tsx scripts/list-projects.ts [filters]` | List projects |
+| `npx tsx scripts/create-project.ts <args>` | Create a new project |
+| `npx tsx scripts/tasks.ts <project-id> [args]` | List or create tasks |
+| `npx tsx scripts/log-time.ts <project-id> <args>` | Log a time entry |
+| `npx tsx scripts/project-summary.ts <project-id>` | Financial summary of a project |
 
 ## Project Workflows
 
 ### Set up a new client project
 
-1. Look up the contact: `xero/scripts/contacts.sh "Client Name"`
+1. Look up the contact: `npx tsx xero/scripts/contacts.ts "Client Name"`
 2. Create the project:
    ```bash
-   scripts/create-project.sh --contact <id> --name "Website Rebuild" \
+   npx tsx scripts/create-project.ts --contact <id> --name "Website Rebuild" \
        --estimate 25000 --deadline 2026-06-30
    ```
 3. Add tasks:
    ```bash
-   scripts/tasks.sh <project-id> --create --name "Design" \
+   npx tsx scripts/tasks.ts <project-id> --create --name "Design" \
        --rate 150 --charge-type TIME --estimate-hours 40
-   scripts/tasks.sh <project-id> --create --name "Development" \
+   npx tsx scripts/tasks.ts <project-id> --create --name "Development" \
        --rate 150 --charge-type TIME --estimate-hours 80
-   scripts/tasks.sh <project-id> --create --name "Hosting Setup" \
+   npx tsx scripts/tasks.ts <project-id> --create --name "Hosting Setup" \
        --rate 500 --charge-type FIXED
    ```
 
@@ -43,10 +43,10 @@ Manage projects, tasks, and time entries via the Xero Projects API. Requires `~/
 
 ```bash
 # Get project users first
-scripts/list-projects.sh --users
+npx tsx scripts/list-projects.ts --users
 
 # Log 4 hours of design work
-scripts/log-time.sh <project-id> --task <task-id> --user <user-id> \
+npx tsx scripts/log-time.ts <project-id> --task <task-id> --user <user-id> \
     --date 2026-02-17 --duration 240 --description "Homepage wireframes"
 ```
 
@@ -55,7 +55,7 @@ Duration is in **minutes** (240 = 4 hours). Max: 59,940 minutes.
 ### Check project budget status
 
 ```bash
-scripts/project-summary.sh <project-id>
+npx tsx scripts/project-summary.ts <project-id>
 ```
 
 Shows: estimate vs. actual amounts, time logged, invoiced amounts, remaining budget.
@@ -64,9 +64,9 @@ Shows: estimate vs. actual amounts, time logged, invoiced amounts, remaining bud
 
 The Projects API does not create invoices directly. The workflow is:
 
-1. Review time and tasks: `scripts/project-summary.sh <project-id>`
-2. Get task details: `scripts/tasks.sh <project-id>`
-3. Create an invoice using `xero-invoicing/scripts/create-invoice.sh` with line items matching the project tasks/time
+1. Review time and tasks: `npx tsx scripts/project-summary.ts <project-id>`
+2. Get task details: `npx tsx scripts/tasks.ts <project-id>`
+3. Create an invoice using `npx tsx xero-invoicing/scripts/create-invoice.ts` with line items matching the project tasks/time
 4. Mark FIXED tasks as invoiced via the API
 
 ## Project Fields
