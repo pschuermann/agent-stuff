@@ -12,6 +12,7 @@ All skill files are in the [`skills`](skills) folder:
 * [`/update-changelog`](skills/update-changelog) - Claude Skill for updating changelogs with notable user-facing changes
 * [`/ghidra`](skills/ghidra) - Claude Skill for reverse engineering binaries using Ghidra's headless analyzer
 * [`/github`](skills/github) - Claude Skill for interacting with GitHub via the `gh` CLI (issues, PRs, runs, and APIs)
+* [`/librarian`](skills/librarian) - Claude Skill for caching and refreshing remote git repositories in `~/.cache/checkouts` for fast reuse
 * [`/openscad`](skills/openscad) - Claude Skill for creating and rendering OpenSCAD 3D models and exporting STL files
 * [`/web-browser`](skills/web-browser) - Claude Skill for using Puppeteer in a Node environment to browse the web
 * [`/tmux`](skills/tmux) - Claude Skill for driving tmux directly with keystrokes and pane output scraping
