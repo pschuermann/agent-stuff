@@ -1,0 +1,14 @@
+{
+  "limits": [
+    {
+      "keywords": ["berocca"],
+      "max_per_unit": 0.55,
+      "unit": "tab"
+    },
+    {
+      "keywords": ["snickers"],
+      "max_per_unit": 1.30,
+      "unit": "bar"
+    }
+  ]
+}
