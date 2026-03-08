@@ -1,0 +1,8 @@
+# Personal price limits
+limits.json
+
+# Browser session cookies
+woolworths-cookies.txt
+
+# playwright-cli session artifacts
+.playwright-cli/
