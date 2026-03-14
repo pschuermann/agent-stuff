@@ -16,6 +16,7 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { createEditTool, type EditToolDetails } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import * as Diff from "diff";
 import { constants } from "fs";
 import { access as fsAccess, readFile as fsReadFile, unlink as fsUnlink, writeFile as fsWriteFile } from "fs/promises";
 import { isAbsolute, resolve as resolvePath } from "path";
@@ -72,6 +73,98 @@ type PatchOperation =
 interface PatchOpResult {
 	path: string;
 	message: string;
+	diff?: string;
+	firstChangedLine?: number;
+}
+
+function generateDiffString(
+	oldContent: string,
+	newContent: string,
+	contextLines = 4,
+): { diff: string; firstChangedLine: number | undefined } {
+	const parts = Diff.diffLines(oldContent, newContent);
+	const output: string[] = [];
+
+	const oldLines = oldContent.split("\n");
+	const newLines = newContent.split("\n");
+	const maxLineNum = Math.max(oldLines.length, newLines.length);
+	const lineNumWidth = String(maxLineNum).length;
+
+	let oldLineNum = 1;
+	let newLineNum = 1;
+	let lastWasChange = false;
+	let firstChangedLine: number | undefined;
+
+	for (let i = 0; i < parts.length; i++) {
+		const part = parts[i];
+		const raw = part.value.split("\n");
+		if (raw[raw.length - 1] === "") {
+			raw.pop();
+		}
+
+		if (part.added || part.removed) {
+			if (firstChangedLine === undefined) {
+				firstChangedLine = newLineNum;
+			}
+
+			for (const line of raw) {
+				if (part.added) {
+					const lineNum = String(newLineNum).padStart(lineNumWidth, " ");
+					output.push(`+${lineNum} ${line}`);
+					newLineNum++;
+				} else {
+					const lineNum = String(oldLineNum).padStart(lineNumWidth, " ");
+					output.push(`-${lineNum} ${line}`);
+					oldLineNum++;
+				}
+			}
+			lastWasChange = true;
+		} else {
+			const nextPartIsChange = i < parts.length - 1 && (parts[i + 1].added || parts[i + 1].removed);
+
+			if (lastWasChange || nextPartIsChange) {
+				let linesToShow = raw;
+				let skipStart = 0;
+				let skipEnd = 0;
+
+				if (!lastWasChange) {
+					skipStart = Math.max(0, raw.length - contextLines);
+					linesToShow = raw.slice(skipStart);
+				}
+
+				if (!nextPartIsChange && linesToShow.length > contextLines) {
+					skipEnd = linesToShow.length - contextLines;
+					linesToShow = linesToShow.slice(0, contextLines);
+				}
+
+				if (skipStart > 0) {
+					output.push(` ${"".padStart(lineNumWidth, " ")} ...`);
+					oldLineNum += skipStart;
+					newLineNum += skipStart;
+				}
+
+				for (const line of linesToShow) {
+					const lineNum = String(oldLineNum).padStart(lineNumWidth, " ");
+					output.push(` ${lineNum} ${line}`);
+					oldLineNum++;
+					newLineNum++;
+				}
+
+				if (skipEnd > 0) {
+					output.push(` ${"".padStart(lineNumWidth, " ")} ...`);
+					oldLineNum += skipEnd;
+					newLineNum += skipEnd;
+				}
+			} else {
+				oldLineNum += raw.length;
+				newLineNum += raw.length;
+			}
+
+			lastWasChange = false;
+		}
+	}
+
+	return { diff: output.join("\n"), firstChangedLine };
 }
 
 interface Workspace {
@@ -450,8 +543,10 @@ async function applyPatchOperations(
 	workspace: Workspace,
 	cwd: string,
 	signal?: AbortSignal,
+	options?: { collectDiff?: boolean },
 ): Promise<PatchOpResult[]> {
 	const results: PatchOpResult[] = [];
+	const collectDiff = options?.collectDiff ?? false;
 
 	for (const op of ops) {
 		if (signal?.aborted) {
@@ -460,8 +555,19 @@ async function applyPatchOperations(
 
 		if (op.kind === "add") {
 			const abs = resolvePatchPath(cwd, op.path);
-			await workspace.writeText(abs, ensureTrailingNewline(op.contents));
-			results.push({ path: op.path, message: `Added file ${op.path}.` });
+			let oldText = "";
+			if (collectDiff && (await workspace.exists(abs))) {
+				oldText = await workspace.readText(abs);
+			}
+			const newText = ensureTrailingNewline(op.contents);
+			await workspace.writeText(abs, newText);
+			const result: PatchOpResult = { path: op.path, message: `Added file ${op.path}.` };
+			if (collectDiff) {
+				const diffResult = generateDiffString(oldText, newText);
+				result.diff = diffResult.diff;
+				result.firstChangedLine = diffResult.firstChangedLine;
+			}
+			results.push(result);
 			continue;
 		}
 
@@ -471,8 +577,18 @@ async function applyPatchOperations(
 			if (!exists) {
 				throw new Error(`Failed to delete ${op.path}: file does not exist`);
 			}
+			let oldText = "";
+			if (collectDiff) {
+				oldText = await workspace.readText(abs);
+			}
 			await workspace.deleteFile(abs);
-			results.push({ path: op.path, message: `Deleted file ${op.path}.` });
+			const result: PatchOpResult = { path: op.path, message: `Deleted file ${op.path}.` };
+			if (collectDiff) {
+				const diffResult = generateDiffString(oldText, "");
+				result.diff = diffResult.diff;
+				result.firstChangedLine = diffResult.firstChangedLine;
+			}
+			results.push(result);
 			continue;
 		}
 
@@ -481,7 +597,13 @@ async function applyPatchOperations(
 		const updated = deriveUpdatedContent(op.path, sourceText, op.chunks);
 
 		await workspace.writeText(sourceAbs, updated);
-		results.push({ path: op.path, message: `Updated ${op.path}.` });
+		const result: PatchOpResult = { path: op.path, message: `Updated ${op.path}.` };
+		if (collectDiff) {
+			const diffResult = generateDiffString(sourceText, updated);
+			result.diff = diffResult.diff;
+			result.firstChangedLine = diffResult.firstChangedLine;
+		}
+		results.push(result);
 	}
 
 	return results;
@@ -514,13 +636,22 @@ export default function (pi: ExtensionAPI) {
 				const ops = parsePatch(patch);
 
 				// Preflight on virtual filesystem before mutating real files.
-				await applyPatchOperations(ops, createVirtualWorkspace(ctx.cwd), ctx.cwd, signal);
+				await applyPatchOperations(ops, createVirtualWorkspace(ctx.cwd), ctx.cwd, signal, { collectDiff: false });
 
 				// Apply for real.
-				const applied = await applyPatchOperations(ops, createRealWorkspace(), ctx.cwd, signal);
+				const applied = await applyPatchOperations(ops, createRealWorkspace(), ctx.cwd, signal, { collectDiff: true });
 				const summary = applied.map((r, i) => `${i + 1}. ${r.message}`).join("\n");
+				const combinedDiff = applied
+					.filter((r) => r.diff)
+					.map((r) => `File: ${r.path}\n${r.diff}`)
+					.join("\n\n");
+				const firstChangedLine = applied.find((r) => r.firstChangedLine !== undefined)?.firstChangedLine;
 				return {
 					content: [{ type: "text" as const, text: `Applied patch with ${applied.length} operation(s).\n${summary}` }],
+					details: {
+						diff: combinedDiff,
+						firstChangedLine,
+					},
 				};
 			}
 
