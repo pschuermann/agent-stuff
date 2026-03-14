@@ -4,6 +4,8 @@ All notable changes to agent-stuff are documented here.
 
 ## Unreleased
 
+## 1.5.0
+
 * Added a `multi-edit` extension that replaces `edit` with support for batched `multi` edits and Codex-style `patch` payloads.
 * Added preflight validation before mutating files for both `multi` edits and `patch` operations in `multi-edit`.
 * Added `/session-breakdown` views for cwd, day-of-week, and time-of-day breakdowns.
