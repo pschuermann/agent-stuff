@@ -35,6 +35,11 @@ interface ExtractionResult {
 	questions: ExtractedQuestion[];
 }
 
+type ExtractionUiResult =
+	| { status: "ok"; result: ExtractionResult }
+	| { status: "cancelled" }
+	| { status: "error"; message: string };
+
 const SYSTEM_PROMPT = `You are a question extractor. Given text from a conversation, extract any questions that need answering.
 
 Output a JSON object with this structure:
@@ -67,35 +72,27 @@ Example output:
   ]
 }`;
 
-const CODEX_MODEL_ID = "gpt-5.3";
-const HAIKU_MODEL_ID = "claude-haiku-4-5";
+const EXTRACTION_MODEL_PROVIDER = "github-copilot";
+const EXTRACTION_MODEL_ID = "claude-haiku-4.5";
 
 /**
- * Prefer GPT-5.3 for extraction when available, otherwise fallback to haiku or the current model.
+ * Prefer a cheap/fast model for question extraction, then fall back to the current model.
  */
 async function selectExtractionModel(
 	currentModel: Model<Api>,
 	modelRegistry: ModelRegistry,
 ): Promise<Model<Api>> {
-	const codexModel = modelRegistry.find("openai-codex", CODEX_MODEL_ID);
-	if (codexModel) {
-		const auth = await modelRegistry.getApiKeyAndHeaders(codexModel);
-		if (auth.ok) {
-			return codexModel;
-		}
-	}
-
-	const haikuModel = modelRegistry.find("anthropic", HAIKU_MODEL_ID);
-	if (!haikuModel) {
+	const extractionModel = modelRegistry.find(EXTRACTION_MODEL_PROVIDER, EXTRACTION_MODEL_ID);
+	if (!extractionModel) {
 		return currentModel;
 	}
 
-	const auth = await modelRegistry.getApiKeyAndHeaders(haikuModel);
-	if (auth.ok === false) {
+	const auth = await modelRegistry.getApiKeyAndHeaders(extractionModel);
+	if (!auth.ok || !auth.apiKey) {
 		return currentModel;
 	}
 
-	return haikuModel;
+	return extractionModel;
 }
 
 /**
@@ -451,15 +448,19 @@ export default function (pi: ExtensionAPI) {
 			const extractionModel = await selectExtractionModel(ctx.model, ctx.modelRegistry);
 
 			// Run extraction with loader UI
-			const extractionResult = await ctx.ui.custom<ExtractionResult | null>((tui, theme, _kb, done) => {
+			const extractionOutcome = await ctx.ui.custom<ExtractionUiResult>((tui, theme, _kb, done) => {
 				const loader = new BorderedLoader(tui, theme, `Extracting questions using ${extractionModel.id}...`);
-				loader.onAbort = () => done(null);
+				loader.onAbort = () => done({ status: "cancelled" });
 
-				const doExtract = async () => {
+				const doExtract = async (): Promise<ExtractionUiResult> => {
 					const auth = await ctx.modelRegistry.getApiKeyAndHeaders(extractionModel);
-					if (auth.ok === false) {
-						throw new Error(auth.error);
+					if (!auth.ok || !auth.apiKey) {
+						return {
+							status: "error",
+							message: auth.ok ? `No API key for ${extractionModel.provider}` : auth.error,
+						};
 					}
+
 					const userMessage: UserMessage = {
 						role: "user",
 						content: [{ type: "text", text: lastAssistantText! }],
@@ -473,7 +474,7 @@ export default function (pi: ExtensionAPI) {
 					);
 
 					if (response.stopReason === "aborted") {
-						return null;
+						return { status: "cancelled" };
 					}
 
 					const responseText = response.content
@@ -481,21 +482,40 @@ export default function (pi: ExtensionAPI) {
 						.map((c) => c.text)
 						.join("\n");
 
-					return parseExtractionResult(responseText);
+					const parsed = parseExtractionResult(responseText);
+					if (!parsed) {
+						return {
+							status: "error",
+							message: "Couldn't parse the extracted questions as JSON.",
+						};
+					}
+
+					return { status: "ok", result: parsed };
 				};
 
 				doExtract()
 					.then(done)
-					.catch(() => done(null));
+					.catch((error) =>
+						done({
+							status: "error",
+							message: error instanceof Error ? error.message : String(error),
+						}),
+					);
 
 				return loader;
 			});
 
-			if (extractionResult === null) {
+			if (extractionOutcome.status === "cancelled") {
 				ctx.ui.notify("Cancelled", "info");
 				return;
 			}
 
+			if (extractionOutcome.status === "error") {
+				ctx.ui.notify(extractionOutcome.message, "error");
+				return;
+			}
+
+			const extractionResult = extractionOutcome.result;
 			if (extractionResult.questions.length === 0) {
 				ctx.ui.notify("No questions found in the last message", "info");
 				return;
@@ -511,15 +531,8 @@ export default function (pi: ExtensionAPI) {
 				return;
 			}
 
-			// Send the answers directly as a message and trigger a turn
-			pi.sendMessage(
-				{
-					customType: "answers",
-					content: "I answered your questions in the following way:\n\n" + answersResult,
-					display: true,
-				},
-				{ triggerTurn: true },
-			);
+			// Send the answers as an actual user message so the agent can continue naturally
+			pi.sendUserMessage("Here are my answers:\n\n" + answersResult);
 	};
 
 	pi.registerCommand("answer", {
