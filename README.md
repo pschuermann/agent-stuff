@@ -46,6 +46,7 @@ Custom extensions for Pi Coding Agent are in [`extensions`](extensions):
 * [`review.ts`](extensions/review.ts) - Code review command (working tree, PR-style diff, commits, custom instructions, optional fix loop).
 * [`session-breakdown.ts`](extensions/session-breakdown.ts) - TUI for 7/30/90-day session and cost analysis with usage graph.
 * [`todos.ts`](extensions/todos.ts) - Todo manager extension with file-backed storage and TUI.
+* [`trust-github-repos.ts`](extensions/trust-github-repos.ts) - Automatically remembers trust for GitHub checkouts under `earendil-works` or `mitsuhiko`.
 * [`uv.ts`](extensions/uv.ts) - Helpers for uv-based Python workflows.
 * [`whimsical.ts`](extensions/whimsical.ts) - Replaces the default thinking message with random whimsical phrases.
 

@@ -27,6 +27,7 @@
       "../../extensions/session-breakdown.ts",
       "../../extensions/split-fork.ts",
       "../../extensions/todos.ts",
+      "../../extensions/trust-github-repos.ts",
       "../../extensions/uv.ts",
       "../../extensions/whimsical.ts",
       "node_modules/mitsupi/extensions/answer.ts",
@@ -40,6 +41,7 @@
       "node_modules/mitsupi/extensions/session-breakdown.ts",
       "node_modules/mitsupi/extensions/split-fork.ts",
       "node_modules/mitsupi/extensions/todos.ts",
+      "node_modules/mitsupi/extensions/trust-github-repos.ts",
       "node_modules/mitsupi/extensions/uv.ts",
       "node_modules/mitsupi/extensions/whimsical.ts"
     ],
