@@ -36,7 +36,7 @@ interface ExtractionResult {
 }
 
 type ExtractionUiResult =
-	| { status: "ok"; result: ExtractionResult }
+	| { status: "ok"; result: ExtractionResult; modelName: string }
 	| { status: "cancelled" }
 	| { status: "error"; message: string };
 
@@ -72,27 +72,37 @@ Example output:
   ]
 }`;
 
-const EXTRACTION_MODEL_PROVIDER = "github-copilot";
-const EXTRACTION_MODEL_ID = "claude-haiku-4.5";
+const EXTRACTION_MODEL_CANDIDATES = [
+	// Codex subscription: cheap, fast, excellent structured output.
+	{ provider: "openai-codex", modelId: "gpt-5.3-codex-spark" },
+	// OpenRouter: very cheap Chinese model, good for simple JSON extraction.
+	{ provider: "openrouter", modelId: "deepseek/deepseek-v4-flash" },
+	// OpenRouter: stronger Chinese fallback, but more expensive than DeepSeek Flash.
+	{ provider: "openrouter", modelId: "moonshotai/kimi-k2.6" },
+] as const;
 
 /**
- * Prefer a cheap/fast model for question extraction, then fall back to the current model.
+ * Candidate models for question extraction.
+ * Tiered fallback: Codex GPT-5.3 Spark → OpenRouter DeepSeek Flash → OpenRouter Kimi → session model.
  */
-async function selectExtractionModel(
+function getExtractionModels(
 	currentModel: Model<Api>,
 	modelRegistry: ModelRegistry,
-): Promise<Model<Api>> {
-	const extractionModel = modelRegistry.find(EXTRACTION_MODEL_PROVIDER, EXTRACTION_MODEL_ID);
-	if (!extractionModel) {
-		return currentModel;
+): Model<Api>[] {
+	const models: Model<Api>[] = [];
+
+	for (const candidate of EXTRACTION_MODEL_CANDIDATES) {
+		const model = modelRegistry.find(candidate.provider, candidate.modelId);
+		if (!model) continue;
+		models.push(model);
 	}
 
-	const auth = await modelRegistry.getApiKeyAndHeaders(extractionModel);
-	if (!auth.ok || !auth.apiKey) {
-		return currentModel;
+	// Last resort: use whatever the current session is using, unless already in the list.
+	if (!models.some((model) => model.provider === currentModel.provider && model.id === currentModel.id)) {
+		models.push(currentModel);
 	}
 
-	return extractionModel;
+	return models;
 }
 
 /**
@@ -444,53 +454,73 @@ export default function (pi: ExtensionAPI) {
 				return;
 			}
 
-			// Select the best model for extraction (prefer GPT-5.3, then haiku)
-			const extractionModel = await selectExtractionModel(ctx.model, ctx.modelRegistry);
+			// Select the candidate models for extraction. We retry fallbacks on auth errors,
+			// empty responses, and invalid JSON instead of stopping at the first available model.
+			const extractionModels = getExtractionModels(ctx.model, ctx.modelRegistry);
 
 			// Run extraction with loader UI
 			const extractionOutcome = await ctx.ui.custom<ExtractionUiResult>((tui, theme, _kb, done) => {
-				const loader = new BorderedLoader(tui, theme, `Extracting questions using ${extractionModel.id}...`);
+				const firstModel = extractionModels[0];
+				const loader = new BorderedLoader(
+					tui,
+					theme,
+					`Extracting questions using ${firstModel.id}${extractionModels.length > 1 ? " (with fallbacks)" : ""}...`,
+				);
 				loader.onAbort = () => done({ status: "cancelled" });
 
 				const doExtract = async (): Promise<ExtractionUiResult> => {
-					const auth = await ctx.modelRegistry.getApiKeyAndHeaders(extractionModel);
-					if (!auth.ok || !auth.apiKey) {
-						return {
-							status: "error",
-							message: auth.ok ? `No API key for ${extractionModel.provider}` : auth.error,
-						};
-					}
-
+					const failures: string[] = [];
 					const userMessage: UserMessage = {
 						role: "user",
 						content: [{ type: "text", text: lastAssistantText! }],
 						timestamp: Date.now(),
 					};
 
-					const response = await complete(
-						extractionModel,
-						{ systemPrompt: SYSTEM_PROMPT, messages: [userMessage] },
-						{ apiKey: auth.apiKey, headers: auth.headers, signal: loader.signal },
-					);
+					for (const extractionModel of extractionModels) {
+						if (loader.signal.aborted) {
+							return { status: "cancelled" };
+						}
 
-					if (response.stopReason === "aborted") {
-						return { status: "cancelled" };
+						const modelName = `${extractionModel.provider}/${extractionModel.id}`;
+						const auth = await ctx.modelRegistry.getApiKeyAndHeaders(extractionModel);
+						if (!auth.ok || !auth.apiKey) {
+							failures.push(`${modelName}: ${auth.ok ? "no API key" : auth.error}`);
+							continue;
+						}
+
+						try {
+							const response = await complete(
+								extractionModel,
+								{ systemPrompt: SYSTEM_PROMPT, messages: [userMessage] },
+								{ apiKey: auth.apiKey, headers: auth.headers, signal: loader.signal },
+							);
+
+							if (response.stopReason === "aborted") {
+								return { status: "cancelled" };
+							}
+
+							const responseText = response.content
+								.filter((c): c is { type: "text"; text: string } => c.type === "text")
+								.map((c) => c.text)
+								.join("\n")
+								.trim();
+
+							const parsed = parseExtractionResult(responseText);
+							if (parsed) {
+								return { status: "ok", result: parsed, modelName };
+							}
+
+							const preview = responseText.length > 300 ? responseText.slice(0, 300) + "…" : responseText;
+							failures.push(`${modelName}: invalid JSON response: ${preview || "(empty)"}`);
+						} catch (error) {
+							failures.push(`${modelName}: ${error instanceof Error ? error.message : String(error)}`);
+						}
 					}
 
-					const responseText = response.content
-						.filter((c): c is { type: "text"; text: string } => c.type === "text")
-						.map((c) => c.text)
-						.join("\n");
-
-					const parsed = parseExtractionResult(responseText);
-					if (!parsed) {
-						return {
-							status: "error",
-							message: "Couldn't parse the extracted questions as JSON.",
-						};
-					}
-
-					return { status: "ok", result: parsed };
+					return {
+						status: "error",
+						message: `Couldn't extract questions. Tried:\n${failures.map((failure) => `- ${failure}`).join("\n")}`,
+					};
 				};
 
 				doExtract()
@@ -515,7 +545,10 @@ export default function (pi: ExtensionAPI) {
 				return;
 			}
 
+			ctx.ui.notify(`Extracted questions using ${extractionOutcome.modelName}`, "info");
+
 			const extractionResult = extractionOutcome.result;
+
 			if (extractionResult.questions.length === 0) {
 				ctx.ui.notify("No questions found in the last message", "info");
 				return;
@@ -531,8 +564,15 @@ export default function (pi: ExtensionAPI) {
 				return;
 			}
 
-			// Send the answers as an actual user message so the agent can continue naturally
-			pi.sendUserMessage("Here are my answers:\n\n" + answersResult);
+			// Send the answers directly as a message and trigger a turn
+			pi.sendMessage(
+				{
+					customType: "answers",
+					content: "I answered your questions in the following way:\n\n" + answersResult,
+					display: true,
+				},
+				{ triggerTurn: true },
+			);
 	};
 
 	pi.registerCommand("answer", {
