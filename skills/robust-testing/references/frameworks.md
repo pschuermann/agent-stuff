@@ -79,6 +79,46 @@ cleanly onto them too — randomize *which* commands/rules are eligible per run.
   agreement + invariants, with automatic shrinking.
 - **Swarm:** vary the set of generated commands per run.
 
+## Rust — proptest / arbitrary / cargo-fuzz / Shuttle
+
+- **Property tests:** `proptest` is the default serious choice; use strategies to
+  construct valid values, `prop_compose!` for custom generators, and regression
+  files for persisted counterexamples. `quickcheck` exists but is lighter.
+- **Structured/binary fuzzing:** `cargo-fuzz` (libFuzzer) plus `arbitrary` for
+  deriving structured inputs from byte streams. Pair with round-trip,
+  canonicalization, and differential properties, not only no-panic checks.
+- **Stateful/concurrent:** model the state explicitly in `proptest`, and use
+  `loom` or AWS `shuttle` when the thing under test is an interleaving rather
+  than an input.
+- **Swarm:** randomize which operations are eligible in each generated command
+  sequence.
+
+## JVM — jqwik / QuickTheories / JUnit-Quickcheck / Jazzer
+
+- **Property tests:** `jqwik` is the most complete modern Java option, with
+  generators, shrinking, lifecycle hooks, and statistics/coverage checks.
+  QuickTheories is also viable for simpler property tests.
+- **Model/stateful:** encode commands against a real object plus a reference
+  model; in Kotlin/Scala, also consider Kotest property testing or ScalaCheck.
+- **Coverage-guided fuzzing:** Jazzer brings libFuzzer-style fuzzing to JVM code;
+  use it for parsers, deserializers, and security-sensitive inputs.
+- **REST/API:** Schemathesis/EvoMaster-style schema-aware testing is often a
+  better fit than hand-written examples when OpenAPI is available.
+
+## API / schema-first systems
+
+- **OpenAPI/REST:** Schemathesis generates requests from OpenAPI and checks
+  schema/status-code invariants; EvoMaster is strong when deeper API exploration
+  and generated scenarios matter.
+- **GraphQL:** generate queries/mutations from the schema, then assert auth,
+  nullability, pagination, idempotence, and cross-endpoint consistency.
+- **Protobuf/Avro/Thrift:** derive structured values from the schema, then test
+  round-trip, forward/backward compatibility, unknown-field preservation, and
+  cross-language implementation agreement.
+- **Metamorphic API relations:** pagination, sorting, field projection,
+  idempotent PUT/DELETE, tenant/auth monotonicity, and create/read/update
+  consistency belong in `metamorphic-testing.md`.
+
 ## Cross-cutting power features the model forgets
 
 Beyond `@given`/`fc.property` + a plain assert, every mature framework ships
@@ -130,3 +170,7 @@ reaches for by default. Pull these in; they're high-leverage.
 When you write tests in one of these stacks, **reach for the model-based API
 first** for anything stateful — it gives you the whole harness (generation,
 lockstep, shrinking, replay) instead of hand-rolling it.
+
+For Rust/JVM/API-schema stacks, use the ecosystem sections above rather than the
+compact table; the exact best tool depends more heavily on whether you are doing
+PBT, coverage-guided fuzzing, concurrency testing, or schema-driven API testing.

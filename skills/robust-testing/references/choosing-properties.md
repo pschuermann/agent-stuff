@@ -187,6 +187,11 @@ a bug even though you never knew the right answer for any single run. This is th
 tool for scientific/numeric code, ML models, search engines, compilers,
 simulations, graphics, optimizers — anything without a reference.
 
+This section gives the core pattern. For modern domain-specific relation
+catalogues (LLM/NLP behavior, REST/OpenAPI, IaC/resource graphs, lossy systems)
+and guardrails for avoiding false metamorphic oracles, read
+`metamorphic-testing.md`.
+
 Classic relations:
 
 - **Symmetry:** `sin(x) == sin(π − x)` · `cos(x) == cos(−x)`

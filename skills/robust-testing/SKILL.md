@@ -5,12 +5,16 @@ description: >-
   path. Use this whenever you're about to write or improve tests — especially
   for data structures, parsers, encoders/decoders, serializers, allocators,
   state machines, caches, or any library/API with a simple interface hiding a
-  complicated implementation. Trigger it when the user asks for "thorough",
+  complicated implementation; REST/GraphQL APIs, LLM/AI behavior, UI workflows,
+  configuration matrices, or distributed/data systems with semantic invariants.
+  Trigger it when the user asks for "thorough",
   "serious", "robust", or "good" tests, mentions fuzzing, stress testing,
-  property-based testing, swarm testing, mutation testing, or invariants, or
-  when correctness genuinely matters and a handful of example-based unit tests
-  clearly won't be enough. The default instinct — a few unit tests with
-  hardcoded expected values — is exactly what this skill exists to override.
+  property-based testing, swarm testing, mutation testing, metamorphic testing,
+  combinatorial testing, grammar/schema fuzzing, temporal properties, or
+  invariants, or when correctness genuinely matters and a handful of
+  example-based unit tests clearly won't be enough. The default instinct — a few
+  unit tests with hardcoded expected values — is exactly what this skill exists
+  to override.
 ---
 
 # Robust Testing
@@ -106,7 +110,9 @@ shapes (Wlaschin's checklist, Hughes' graded five, metamorphic testing) and how
 to pick — plus the one rule that matters most when *you*, an agent that can see
 the implementation, are writing properties: **derive them from the spec and the
 callers, never from the implementation, and never from "what you think is
-true"** — read **`references/choosing-properties.md`**.
+true"** — read **`references/choosing-properties.md`**. When the system has no
+single-output oracle (LLM/ML behavior, search/ranking, REST APIs, IaC/resource
+graphs, numeric/scientific code), also read **`references/metamorphic-testing.md`**.
 
 For the full annotated pattern — including key/input generation modes, boundary
 probing, biasing the generator, sanitizers, and a complete real example
@@ -121,7 +127,8 @@ lockstep reference checking, automatic shrinking, and seed replay for free — a
 the model won't reach for it by default. For the right library and entry point in
 Python, TypeScript/React, Go, and .NET — and the cross-cutting power features the
 model forgets (distribution checking, targeted search, the failure database,
-async scheduling) — see **`references/frameworks.md`**.
+async scheduling) — see **`references/frameworks.md`**. It now also covers
+Rust, JVM, and schema-first API testing.
 
 For the craft that makes a property suite actually bite — writing generators that
 *construct rather than filter*, biasing toward the edges, **measuring the
@@ -155,6 +162,22 @@ The essentials to internalize now:
 
 These layer on top of the fuzz harness. Pull each one in when its trigger fires.
 
+### Quick routing map
+
+Use this to pick the first serious technique instead of defaulting to unit tests:
+
+| Shape of system | First technique to reach for |
+|---|---|
+| Stateful API / data structure | Model-based PBT with reference lockstep |
+| Parser / codec / protocol / DSL | Grammar/schema-aware fuzzing plus round-trip/metamorphic checks |
+| Many operations that undo/crowd each other out | Swarm testing |
+| Finite feature/config/permission/platform matrix | Combinatorial input-space coverage |
+| UI, workflow, stream, trigger-action, or reactive system | Temporal workflow properties over traces |
+| REST/GraphQL API with OpenAPI/schema docs | Schema-aware generation plus metamorphic API relations |
+| LLM/ML/natural-language behavior | Metamorphic relations, statistical/tolerance checks, independent verification |
+| Concurrent/distributed/storage system | Deterministic simulation testing |
+| Agent is asked to invent properties | Evidence-first LLM-assisted property discovery |
+
 ### Swarm testing — when uniform random isn't finding bugs
 
 The single most important fix for fuzzing that "runs billions of operations and
@@ -174,6 +197,46 @@ another (push/pop, insert/remove, alloc/free, connect/disconnect), or fuzzing
 has gone quiet despite huge op counts. The technique, the random-walk intuition,
 the active-vs-passive suppression distinction, an implementation sketch, and a
 per-domain table of "features" to toggle are in **`references/swarm-testing.md`**.
+
+### Structured fuzzing — when raw random bytes bounce off the parser
+
+For parsers, codecs, file formats, compilers, protocols, REST/GraphQL APIs, and
+DSLs, byte-level randomness usually dies at the first syntax check. Build inputs
+that are valid enough to reach deep code, then mutate/corrupt/splice them. Start
+from seeds and dictionaries, then move to grammars, JSON Schema/OpenAPI/Protobuf
+schemas, AST generators, or target-specific generators. Recent LLM-assisted
+fuzzing work is useful here only when it is coupled to coverage/distribution
+feedback: have the agent synthesize or improve the generator, then measure which
+deep predicates/branches/states it actually reaches. See
+**`references/structured-fuzzing.md`**.
+
+### Metamorphic testing — when there is no single expected output
+
+When the correct result of one call is hard to know, relate multiple executions:
+transform the input in a way that should preserve, monotonically change, or
+predictably transform the output. This is the right lens for LLM/NLP features,
+search/ranking, REST APIs, compilers, IaC engines, ML systems, scientific code,
+and lossy transforms. Use several independently-justified relations; a single
+relation is usually too weak, and a guessed relation can be a false oracle. See
+**`references/metamorphic-testing.md`**.
+
+### Combinatorial testing — when bugs hide in option interactions
+
+Random generation is not always the best way to cover a finite configuration
+space. For feature flags, permissions, locales, browser/device matrices, auth
+modes, storage backends, API options, build profiles, or deployment configs, use
+covering arrays / t-way combinatorial testing so every pair/triple/etc. of
+factor values appears somewhere. This complements swarm testing: swarm toggles
+operation/input features inside randomized runs; combinatorial testing covers a
+finite factor model deliberately. See **`references/input-space-coverage.md`**.
+
+### Temporal workflow properties — when correctness lives in the trace
+
+For UI workflows, stream processing, queues, trigger-action systems, reactive
+apps, and long-lived agents, the property is often not "this call returns X" but
+"after A, B eventually happens", "C never happens before D", or "after delete,
+reload never shows the item again." Model the run as an event trace and assert
+safety/liveness/ordering properties. See **`references/temporal-workflow-testing.md`**.
 
 ### Stateful tests can destroy real data — isolate first
 
@@ -259,26 +322,38 @@ the home of `BUGGIFY`, FoundationDB, and TigerBeetle's simulator. fast-check's
 `fc.scheduler` is small-scale DST inside a property test. See
 **`references/deterministic-simulation-testing.md`**.
 
+### LLM-assisted property discovery — useful only with evidence
+
+Do not ask an LLM to invent properties from unsupported guesses. Recent work is
+converging on an evidence-first loop: explore the public behavior, collect
+traces/callers/docs, synthesize candidate properties from that evidence, run
+them, then refine or discard imprecise ones. When using an agent to improve
+implementation code, feed it the minimal counterexample and violated property,
+not vague "test failed" feedback. See
+**`references/llm-assisted-property-discovery.md`**.
+
 ## How to apply this in a session
 
-1. Identify what's under test and which principle dominates. A pure data
-   structure / parser / codec → fuzz + invariant harness is the spine. A
-   stateful system with many operations → fuzz + **swarm**. A concurrent /
-   distributed / storage system → **deterministic simulation**. A timing/LLM
-   system → consider **agentic**.
+1. Identify what's under test and which principle dominates. Use the routing map
+   above before choosing a test style.
 2. Write (or confirm) the implementation first; note the fragile spots out loud.
 3. Decide *what to assert* before how to generate — reach for a reference model
-   first, then round-trip / invariant / metamorphic relations. See
-   `choosing-properties.md`.
+   first, then round-trip / invariant / metamorphic relations. Derive properties
+   from the spec, callers, schemas, docs, or observed behavior evidence; do not
+   invent properties just because they sound plausible. See `choosing-properties.md`
+   and `llm-assisted-property-discovery.md`.
 4. Build the fuzz harness: seeded RNG, random ops through the API, a reference
    implementation and/or invariants, input generation that *constructs* (not
-   filters) and biases toward edges, sanitizers on. Keep it fast.
+   filters) and biases toward edges, sanitizers on. Keep it fast. For structured
+   inputs, prefer grammar/schema/protocol-aware generation over raw bytes.
 5. If the API has competing operations, make it a swarm harness from the start.
 6. Measure the distribution — confirm the generator actually reaches the fragile
    states, not just the boring middle (`pbt-craft.md`). Add assertions or
    statistics checks for the categories you care about (edge lengths, invalid
    inputs, duplicate IDs, DST zones, wrap-midnight windows, resize thresholds).
-7. Wire the suite into the project: local make/npm targets, dependency install,
+7. Wire the suite into the project in tiers: fast deterministic local/PR runs,
+   bounded randomized CI runs with seed logging, and longer nightly/continuous
+   fuzz runs with persisted corpus/counterexamples. Include dependency install,
    CI path filters, and a safe isolated database/temp resource for destructive
    stateful tests.
 8. Optionally validate the suite with mutation testing.
@@ -288,6 +363,7 @@ the home of `BUGGIFY`, FoundationDB, and TigerBeetle's simulator. fast-check's
 When you write the tests, **say which techniques you're using and why** — the
 user is often learning this approach, and the reasoning is half the value.
 
-For curated talks, blogs, books, exemplar repos, and the field's war stories
-(AUTOSAR, Dropbox, AWS, the Anthropic agentic-PBT study), see
+For curated talks, blogs, papers, books, exemplar repos, and the field's war stories
+(AUTOSAR, Dropbox, AWS, the Anthropic agentic-PBT study, 2026 PropGen/DiscPBT/
+LLMORPH/ARMeta/Gentoo work), see
 **`references/resources.md`**.

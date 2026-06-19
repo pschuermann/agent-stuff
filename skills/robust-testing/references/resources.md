@@ -19,6 +19,63 @@ user asks for sources.
 3. **David R. MacIver — *How Hypothesis Works*** — how the machinery (generators,
    internal shrinking) actually works. hypothesis.works/articles/how-hypothesis-works/
 
+## Confidence labels
+
+Use these labels when deciding how strongly to recommend a technique:
+
+- **Proven:** broad field evidence, mature tooling, or multiple production war
+  stories. Safe to recommend as a default when the system shape matches.
+- **Specialized:** solid idea/tooling, but best for a narrower domain or workflow.
+  Recommend when the trigger is specific.
+- **Emerging:** promising recent research or early practice. Use as inspiration
+  or an optional advanced move; do not present it as a settled default.
+
+## 2026 additions worth folding into practice
+
+- **[Emerging] PropGen — LLM-based property generation for mobile app testing**
+  (https://arxiv.org/abs/2604.13463). The useful pattern is not "ask an LLM for
+  properties"; it is functionality-guided exploration, behavioral evidence,
+  property synthesis, and feedback refinement. Evidence: 12 Android apps and 25
+  previously unknown functional bugs; promising but narrow. This is the backbone
+  of `llm-assisted-property-discovery.md`.
+- **[Emerging] PBT-Bench — benchmarking AI agents on PBT**
+  (https://arxiv.org/abs/2605.15229; https://pbtbench.com/). Useful for
+  evaluating whether an agent can derive documentation-grounded invariants and
+  write Hypothesis strategies that actually hit semantic bugs. Treat benchmark
+  scores as research signal, not proof that an agent will find bugs in a live
+  codebase.
+- **[Specialized/Emerging] LLMORPH / NLP metamorphic testing**
+  (https://arxiv.org/abs/2603.23611; https://arxiv.org/abs/2511.02108). Shows
+  metamorphic testing as the practical oracle for LLM/NLP systems and catalogs
+  many task-specific metamorphic relations. Treat the *metamorphic testing*
+  principle as proven, but the LLM/NLP relation catalogues as domain-specific and
+  still maturing.
+- **[Emerging] ARMeta — multi-agent metamorphic testing for REST APIs** (arXiv
+  2605.28321, https://arxiv.org/abs/2605.28321). Uses OpenAPI plus an LLM
+  workflow to derive Given-When-Then metamorphic API scenarios. Use the scenario
+  patterns; verify business semantics independently.
+- **[Emerging] Gentoo — Fuzzing with Agents? Generators Are All You Need** (arXiv
+  2604.01442, https://arxiv.org/abs/2604.01442). The important lesson: agents
+  can synthesize target-specific input generators, but only with tooling, source
+  context, and coverage/predicate feedback. Evidence is encouraging but limited
+  to 7 Java-library fuzz targets and coverage-oriented results.
+- **[Specialized/Emerging] DiscPBT — property-based testing for data-intensive
+  scalable computing** (https://arxiv.org/abs/2606.11132). Systematizes reusable
+  meta-properties for Spark/data systems: equivalence rewrites, data
+  decomposition, computation decomposition, and operator-local relations.
+  Strongest for Spark/dataflow-like systems, not as a general-purpose testing
+  recipe.
+- **[Emerging] Programmable Property-Based Testing** (https://arxiv.org/abs/2602.18545).
+  Points toward decoupling executable specifications from runners so
+  coverage-guided seed pools, targeted search, context-sensitive shrinking, and
+  custom parallel runners can reuse the same property. Treat as a
+  framework-design direction, not a project-testing technique to reach for by
+  default.
+- **[Emerging] VAFuzz — Variability-Aware Fuzzing** (ICSE 2026). Treats
+  configuration as a first-class fuzzing dimension, complementing combinatorial
+  input-space coverage. The broader idea "vary configuration deliberately" is
+  mature; this specific greybox fuzzing line is newer.
+
 ## Talks
 
 - **John Hughes — Testing the Hard Stuff and Staying Sane** (youtube.com/watch?v=zi0rHwfiX1Q).
@@ -40,6 +97,9 @@ user asks for sources.
 - **Hillel Wayne — Beyond Unit Tests** (hillelwayne.com/talks/beyond-unit-tests/).
   PBT plus runtime contracts as complementary layers, from a formal-methods
   practitioner honest about where each pays off.
+- **Muhammad Maaz — Agentic Property-Based Testing** (mmaaz.ca/talks.html;
+  Trajectory Labs event: luma.com/lh3o0plh). Public talk trail for the
+  Anthropic agentic-PBT work.
 
 ## Blogs and writeups
 
@@ -72,6 +132,15 @@ user asks for sources.
 - **Ted Kaminski — Fuzzing and Property Testing**
   (tedinski.com/2018/12/11/fuzzing-and-property-testing.html). The clearest take
   on the (blurry) PBT-vs-fuzzing boundary.
+- **Alperen Keles — What is a property?**
+  (alperenkeles.com/posts/what-is-a-property/). Blog-length framing for what a
+  PBT library must be able to express; companion context for programmable PBT.
+- **[Proven] NIST Automated Combinatorial Testing for Software** (csrc.nist.gov).
+  Covering arrays, sequence covering arrays, ACTS/CAGen tooling, and input-space
+  coverage measurement for option/configuration matrices.
+- **[Proven] The Fuzzing Book** (fuzzingbook.org). Executable chapters on
+  grammar-based, mutation-based, coverage-guided, and symbolic fuzzing; the best
+  open book for structured fuzzing technique.
 
 ## Books
 
@@ -79,6 +148,12 @@ user asks for sources.
   (PragProg, 2019). The only full-length practitioner book; mine it for technique
   (custom generators that shrink, stateful modeling, targeted properties) even if
   you don't write Erlang.
+- **Andreas Zeller, Rahul Gopinath, Marcel Böhme, Gordon Fraser, Christian
+  Holler — *The Fuzzing Book*** (open web book). Use for grammar-based fuzzing,
+  fuzz drivers, search-based testing, reduction, and symbolic fuzzing examples.
+- **Maurício Aniche — *Effective Software Testing***. A pragmatic bridge from
+  conventional testing into stronger techniques: boundary analysis, contracts,
+  testability, mutation testing, and when property-style tests pay off.
 - **Hypothesis documentation** (hypothesis.readthedocs.io). The authoritative
   reference for the modern internal-shrinking model; see `stateful`, `target()`,
   and the example database.
@@ -97,6 +172,13 @@ user asks for sources.
   generator/shrinker meta-example.
 - **janestreet/base_quickcheck** — derived generators/shrinkers as a
   production-library design reference.
+- **HeLeHanPrivate/PBTwithCodeGen** — companion repository for the
+  Property-Generated Solver paper: LLM-assisted property generation and
+  property-violation feedback for code generation.
+- **pbtbench.com / pbtbench-team/pbt-bench** — project site and Hugging Face
+  dataset for evaluating agents on documentation-grounded PBT problems.
+- **ngernest/pbt-bibliography** — current bibliography for new PBT papers,
+  including programmable PBT and runner-performance work.
 
 ## War stories (the credibility cases)
 
@@ -113,7 +195,8 @@ user asks for sources.
 - **Anthropic agentic PBT (2026).** Claude autonomously writing Hypothesis tests
   found real, merged bugs across NumPy/SciPy/Pandas and others (e.g.
   `numpy.random.wald` producing negative samples) — and quantified the LLM
-  failure modes that shape `choosing-properties.md`. red.anthropic.com/2026/property-based-testing/
+  failure modes that shape `choosing-properties.md`.
+  anthropic.com/research/property-based-testing
   · arXiv:2510.09907.
 
 ## What the practitioners converge on (from the field, incl. HN)
