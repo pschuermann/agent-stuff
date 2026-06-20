@@ -37,8 +37,7 @@ Custom extensions for Pi Coding Agent are in [`extensions`](extensions):
 * [`control.ts`](extensions/control.ts) - Session control helpers (list controllable sessions, etc.).
 * [`files.ts`](extensions/files.ts) - Unified file browser with git status + session references and reveal/open/edit/diff actions.
 * [`split-fork.ts`](extensions/split-fork.ts) - `/split-fork` command to branch the current session into a new pi process in a right-hand Ghostty split.
-* [`goal.ts`](extensions/goal.ts) - Opt-in `/goal` mode with persisted long-running objectives, status controls, and model tools.
-* [`loop.ts`](extensions/loop.ts) - Prompt loop for rapid iterative coding with optional auto-continue.
+* [`goal.ts`](extensions/goal.ts) - Opt-in `/goal` mode with session-log-replayed long-running objectives, automatic continuation, status controls, and model tools.
 * [`multi-edit.ts`](extensions/multi-edit.ts) - Replaces the built-in `edit` tool with batch `multi` edits and Codex-style `patch` support, including preflight validation.
 * [`notify.ts`](extensions/notify.ts) - Native desktop notifications when the agent finishes.
 * [`prompt-editor.ts`](extensions/prompt-editor.ts) - In-editor prompt mode selector with persistence, history, config, and shortcuts.
