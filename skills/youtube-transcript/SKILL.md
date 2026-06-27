@@ -1,5 +1,6 @@
 ---
 name: youtube-transcript
+description: Fetch raw YouTube transcripts from a video ID or URL using the local transcript.js helper. Use when you need the transcript text itself rather than a summary, translation, or higher-level analysis.
 ---
 
 # YouTube Transcript
