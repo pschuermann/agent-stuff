@@ -10,7 +10,7 @@
  * 4. Submits the compiled answers when done
  */
 
-import { complete, type Model, type Api, type UserMessage } from "@earendil-works/pi-ai";
+import { complete, parseJsonWithRepair, type Model, type Api, type UserMessage } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionContext, ModelRegistry } from "@earendil-works/pi-coding-agent";
 import { BorderedLoader } from "@earendil-works/pi-coding-agent";
 import {
@@ -74,16 +74,21 @@ Example output:
 
 const EXTRACTION_MODEL_CANDIDATES = [
 	// Codex subscription: cheap, fast, excellent structured output.
+	{ provider: "openai-codex", modelId: "gpt-5.4-mini" },
 	{ provider: "openai-codex", modelId: "gpt-5.3-codex-spark" },
+	{ provider: "openai-codex", modelId: "gpt-5.4" },
+	{ provider: "openai-codex", modelId: "gpt-5.3-codex" },
 	// OpenRouter: very cheap Chinese model, good for simple JSON extraction.
 	{ provider: "openrouter", modelId: "deepseek/deepseek-v4-flash" },
 	// OpenRouter: stronger Chinese fallback, but more expensive than DeepSeek Flash.
 	{ provider: "openrouter", modelId: "moonshotai/kimi-k2.6" },
+	// Anthropic: fast general fallback when configured.
+	{ provider: "anthropic", modelId: "claude-haiku-4-5" },
 ] as const;
 
 /**
  * Candidate models for question extraction.
- * Tiered fallback: Codex GPT-5.3 Spark → OpenRouter DeepSeek Flash → OpenRouter Kimi → session model.
+ * Tiered fallback: Codex → OpenRouter → Haiku → session model.
  */
 function getExtractionModels(
 	currentModel: Model<Api>,
@@ -94,6 +99,7 @@ function getExtractionModels(
 	for (const candidate of EXTRACTION_MODEL_CANDIDATES) {
 		const model = modelRegistry.find(candidate.provider, candidate.modelId);
 		if (!model) continue;
+		if (models.some((existing) => existing.provider === model.provider && existing.id === model.id)) continue;
 		models.push(model);
 	}
 
@@ -105,28 +111,72 @@ function getExtractionModels(
 	return models;
 }
 
-/**
- * Parse the JSON response from the LLM
- */
-function parseExtractionResult(text: string): ExtractionResult | null {
-	try {
-		// Try to find JSON in the response (it might be wrapped in markdown code blocks)
-		let jsonStr = text;
-
-		// Remove markdown code block if present
-		const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-		if (jsonMatch) {
-			jsonStr = jsonMatch[1].trim();
-		}
-
-		const parsed = JSON.parse(jsonStr);
-		if (parsed && Array.isArray(parsed.questions)) {
-			return parsed as ExtractionResult;
-		}
-		return null;
-	} catch {
+function toExtractedQuestion(value: unknown): ExtractedQuestion | null {
+	if (typeof value !== "object" || value === null) {
 		return null;
 	}
+	const record = value as Record<string, unknown>;
+	const question = record.question;
+	const context = record.context;
+	if (typeof question !== "string") {
+		return null;
+	}
+	if (context !== undefined && context !== null && typeof context !== "string") {
+		return null;
+	}
+	return typeof context === "string" && context.length > 0 ? { question, context } : { question };
+}
+
+function toExtractionResult(value: unknown): ExtractionResult | null {
+	if (typeof value !== "object" || value === null) {
+		return null;
+	}
+	const record = value as Record<string, unknown>;
+	if (!Array.isArray(record.questions)) {
+		return null;
+	}
+	const questions: ExtractedQuestion[] = [];
+	for (const question of record.questions) {
+		const extractedQuestion = toExtractedQuestion(question);
+		if (!extractedQuestion) {
+			return null;
+		}
+		questions.push(extractedQuestion);
+	}
+	return { questions };
+}
+
+/**
+ * Parse the JSON response from the LLM.
+ */
+function parseExtractionResult(text: string): ExtractionResult | null {
+	const candidates: string[] = [];
+	const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+	if (jsonMatch) {
+		candidates.push(jsonMatch[1].trim());
+	}
+
+	const trimmed = text.trim();
+	candidates.push(trimmed);
+
+	const firstBrace = trimmed.indexOf("{");
+	const lastBrace = trimmed.lastIndexOf("}");
+	if (firstBrace !== -1 && lastBrace > firstBrace) {
+		candidates.push(trimmed.slice(firstBrace, lastBrace + 1));
+	}
+
+	for (const candidate of candidates) {
+		try {
+			const result = toExtractionResult(parseJsonWithRepair<unknown>(candidate));
+			if (result) {
+				return result;
+			}
+		} catch {
+			// Try the next candidate.
+		}
+	}
+
+	return null;
 }
 
 /**
