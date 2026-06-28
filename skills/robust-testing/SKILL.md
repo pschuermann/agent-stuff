@@ -109,7 +109,33 @@ run locally and in CI:
 - **Vague request such as "add robust tests":** do not ask the user to define the
   whole strategy unless you are blocked. Inspect the codebase, pick the highest
   risk surface, state the chosen scope, and implement a focused harness with
-  clear residual risk.
+  clear residual risk. Prefer one high-leverage target over broad shallow work.
+
+For vague requests, scan for targets in this order and choose the best local fit:
+
+1. Encode/decode, serialize/deserialize, import/export, parse/render pairs.
+2. Parsers, codecs, validators, normalizers, canonicalizers, sanitizers.
+3. Custom collections, caches, queues, allocators, state machines, schedulers.
+4. Sorting, comparison, matching, permission, billing, time/date, numeric logic.
+5. OpenAPI/GraphQL/Protobuf/schema-driven APIs and cross-service contracts.
+6. Recent bug reports, fragile TODOs, regression tests, or complex callers.
+
+If none of these exist, add the smallest useful correctness test setup and report
+that the repo lacks an obvious robust-testing surface rather than inventing one.
+
+## Companion skill handoff points
+
+After choosing the target behavior and property/model, hand off only when the
+next bottleneck is operational detail. Do not load every companion skill at the
+start of a session.
+
+| Bottleneck | If available | Standalone fallback |
+|---|---|---|
+| Writing/reviewing concrete PBT code, custom strategies, or PBT refactors | `property-based-testing` | `references/choosing-properties.md`, `references/pbt-craft.md`, `references/frameworks.md` |
+| Building a coverage-guided fuzz harness | `harness-writing` plus `libfuzzer`, `aflpp`, `cargo-fuzz`, or `atheris` | `references/structured-fuzzing.md`, `references/frameworks.md` |
+| Native-code fuzzing should catch memory errors | `address-sanitizer` | run the project-standard ASan/UBSan/sanitizer setup; document the gap if none exists |
+| Fuzzer reaches only shallow parser branches | `coverage-analysis`, then `fuzzing-dictionary` or `fuzzing-obstacles` | `references/structured-fuzzing.md`; add seeds/dictionaries/valid-then-mutate inputs and measure distribution |
+| Moving from one manual "does it bite?" mutation to a campaign | `mutation-testing` | `references/mutation-testing.md`; keep at least one manual mutation check |
 
 ## The workhorse: fuzz + invariant testing through the API
 
@@ -302,6 +328,21 @@ This lightweight "does it bite?" check is not a replacement for full mutation
 testing, but it catches the common failure mode where a fuzz test does lots of
 work while asserting almost nothing.
 
+Before trusting a green property test, do a quick quality review:
+
+- The assertion uses the result of the system under test meaningfully; it is not
+  `x == x`, result-equals-itself, or a reimplementation of the same algorithm.
+- The strongest available property is present: reference lockstep, round-trip,
+  invariant, idempotence, metamorphic relation, or spec/schema relation — not
+  only "does not crash" unless crash-finding under sanitizers is the goal.
+- Generators construct valid inputs directly instead of filtering away most
+  samples with `assume` / `filter` / precondition skips.
+- Edge distributions are measured or forced: empty/singleton/huge, duplicate
+  keys, invalid-but-near-valid inputs, threshold values, time zones, overflow
+  boundaries, authorization combinations, etc.
+- Failures are replayable from a seed, path, corpus file, or permanent
+  regression example.
+
 ### Cross-implementation tests catch drift, not shared misconceptions
 
 Comparing two implementations (for example client JS vs backend Python) is a
@@ -360,14 +401,32 @@ implementation code, feed it the minimal counterexample and violated property,
 not vague "test failed" feedback. See
 **`references/llm-assisted-property-discovery.md`**.
 
+### When a generated test fails — triage before declaring a bug
+
+Property/fuzz failures are powerful, but not every failure is an implementation
+bug. Before changing production code or reporting a defect:
+
+1. Reproduce the minimized input or operation trace outside the randomized run.
+2. Ground the violated property in docs, schemas, type signatures, callers,
+   existing tests, standards, or explicit user requirements.
+3. Check whether the generator produced out-of-domain input or violated a real
+   precondition. If so, fix the generator or property.
+4. Classify the result as implementation bug, test bug, ambiguous spec, or
+   expected precondition violation.
+5. If the spec is ambiguous, surface the question instead of silently encoding a
+   guess into the test.
+
+The final report should distinguish bugs found from assumptions clarified.
+
 ## How to apply this in a session
 
 1. Inspect the project first: language, package manager, current test runner,
    test scripts, CI config, fixture/database helpers, and the nearest tests for
    the target behavior. If no setup exists, add the minimal standard setup for
    that ecosystem.
-2. Identify the public contract under test and which principle dominates. Use
-   the routing map above before choosing a test style.
+2. Identify the public contract under test and which principle dominates. For a
+   vague request, use the target-discovery checklist above and pick one focused
+   high-risk surface. Use the routing map before choosing a test style.
 3. Confirm the implementation and behavior evidence: code, callers, docs,
    schemas, tickets, bug reports, and existing examples. Note fragile spots out
    loud before writing tests.
