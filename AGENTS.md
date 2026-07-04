@@ -10,3 +10,7 @@
 ## Extensions
 
 Pi extensions live in `./extensions`. When working in this repo, add or update extensions there. You can consult the `pi-mono` for reference, but do not modify code in `pi-mono`.
+
+## Local packages
+
+Keep local Pi packages that should survive upstream refreshes under `./packages/<name>/` and avoid touching the root manifest unless explicitly needed. Commit local package work before rebasing or merging upstream to reduce conflict risk.

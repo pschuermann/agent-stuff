@@ -1,0 +1,21 @@
+{
+  "name": "pi-sci",
+  "version": "0.1.0",
+  "description": "Auditable research workflows for Pi",
+  "keywords": [
+    "pi-package",
+    "pi-skill",
+    "research",
+    "provenance"
+  ],
+  "type": "module",
+  "license": "MIT",
+  "pi": {
+    "prompts": [
+      "./prompts"
+    ],
+    "skills": [
+      "./skills"
+    ]
+  }
+}
