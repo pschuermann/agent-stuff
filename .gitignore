@@ -1,5 +1,8 @@
 node_modules
 .pi/todos
+.pi/insights-bakeoffs
+.pi/insights-reports
+.pi/hotkeys-overlay.json
 todo-*.md
 *.profraw
 .playwright-cli/

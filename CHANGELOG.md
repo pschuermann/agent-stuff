@@ -4,6 +4,10 @@ All notable changes to agent-stuff are documented here.
 
 ## Unreleased
 
+* Added `/insights` for local Pi/Codex session reflection, Claude-style HTML reports, redacted Codex-backed bakeoffs, and research notes.
+* Improved `/insights` to ignore empty self-analysis sessions and fall back to recent global sessions when the default cwd filter has no useful history.
+* Added `/insights harness` and exact-session `--file` analysis for patchable AGENTS.md, skill, extension, hook, and helper-script recommendations.
+
 ## 1.6.0
 
 * Added a redesigned `btw` extension with side chat markdown rendering, tool visibility, deferred session creation, and main-context improvements.

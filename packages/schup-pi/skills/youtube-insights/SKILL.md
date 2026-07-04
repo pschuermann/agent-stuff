@@ -20,6 +20,7 @@ yt-dlp --skip-download --print "%(upload_date)s|%(channel)s|%(title)s|%(id)s|%(d
 
 ## Routing / handoff
 
+If the user wants to turn the video/source into a reusable critique, assessment, review, or “what would this critic say?” skill, do not stop at a video summary. Follow `source-to-critique-skill`; use this skill to produce the saved `source-insight.md` that the critique-skill workflow consumes. In that workflow, also write or update the workspace `source_bundle.json` with the video URL, title, creator/channel, saved insight path, transcript path if saved, and any visual-insights manifest/report paths.
 
 Use `youtube-transcript` directly only when the user explicitly wants raw captions/transcript text. For normal video understanding, this skill should own the transcript, metadata, reference resolution, saved insight, and chat summary.
 
@@ -31,9 +32,21 @@ Use `youtube-transcript` directly only when the user explicitly wants raw captio
 4. **Correct ASR errors silently** — YouTube's speech recognition garbles proper nouns, model names, project names, and technical terms. When you spot something that looks wrong (inconsistent with context, phonetically plausible but semantically odd), resolve it from context and use the correct term directly in your output. Do NOT surface a list of corrections — the user wants a clean, accurate summary, not a transcription-quality report. The corrections should be invisible: the reader simply gets the right names and terms as if the transcript had been perfect.
 5. **Drop filler silently** — livestreams and casual videos open and meander with dead air: mic/volume checks, "can you hear me", reacting to the chat UI, reading donation/sub notifications, housekeeping about stream timing. This is noise, not content. Cut it entirely — don't summarise it, don't mention that you skipped it, don't note "the stream opened with setup". The reader should never see a trace of it.
 6. **Track and resolve references** — when the speaker points at something external (a blog post, a video, a paper, a GitHub repo, an interview they're reading, a person's talk), find the actual source so the user can go to the primary material. Use web search / `gh` / the URL to locate it, confirm it's the right one (title, author, date line up with what was said), and link it. See "Sourcing references" below. If you genuinely can't find it, say so briefly rather than linking a guess.
-7. **Save the insight** to the library (see "Saving insights" below) and **answer in chat** — if the user asked a specific question, lead your chat reply with that; the saved file always contains the full structured insight regardless.
+7. **Plainspoken-prose pass** — before saving, run the draft through `plainspoken-prose` and the anti-trope checklist in "Output format". This is the step that's easy to skip and the one that catches the AI tells (contrast flips, bolted-on aphorisms, inflated hooks).
+8. **Save the insight** to the library (see "Saving insights" below) and **answer in chat** — if the user asked a specific question, lead your chat reply with that; the saved file always contains the full structured insight regardless.
 
 ## Output format
+
+When generating the chat reply and saved insight, invoke the `plainspoken-prose` skill and run its final check over your draft before saving (if it's unavailable, apply its rules inline). Write clear, direct, specific prose without generic AI-style polish. Keep the structure below, but let the sentences sound like a careful human note rather than a template fill.
+
+**Audience and register.** The saved files go to an opt-in work Slack channel of fellow software engineers who chose to be there. They want the strong opinions, the judgment, and the bite — keep them, including mild swearing where the speaker swears (it's appreciated, not a problem). But the register stays professional: render genuinely crude or sexual jokes tastefully or omit them rather than reproducing them verbatim, and never launder out the *opinion* underneath. Softening *stronzi* to "idiots" is fine; flattening a sharp take into a neutral one is not.
+
+**The color comes from the speaker, not from you.** This is the trap to watch. The rhetorical heat belongs to the speaker — quoted and attributed. Your own connective prose stays flat. Do not coin slogans the speaker didn't say, and do not append an aphorism that restates a point you already made. The recurring AI tells to hunt down in your own draft before saving:
+- isn't-X-it's-Y contrast flips ("the decline isn't material — it's cultural")
+- aphoristic restatement bolted on after a point already landed ("The gate is commitment, not IQ")
+- inflated framing hooks on a bullet ("The math is magical", "Difficulty is the point, not a side effect")
+- inflation intensifiers: *literally, genuinely, truly, simply*
+- a tacked-on closing sentence that just restates the section
 
 Lead with the user's specific question if they gave one. Then:
 
@@ -43,7 +56,7 @@ Lead with the user's specific question if they gave one. Then:
 
 **Practices & techniques** (what the speaker or the people they discuss actually *did* — concrete behaviours worth imitating). This is one of the most valuable parts of the output. The user watches people like this to learn how to work like them, so capture the methods, not just the conclusions. Examples: "he went and read the attackers' GitHub repos before judging their competence", "he rewrote the entire test suite from scratch before attempting security fixes", "he reads the original papers rather than relying on summaries", "he benchmarks both options at 8-bit quality before deciding". If someone in the video did something effective, name the action so the user can copy it.
 
-**Notable details** (anything specific and interesting that a summary would normally drop — concrete numbers, personal anecdotes, unusual comparisons, and **named callouts**: when the speaker names a specific person, project, company, or coins/uses a signature phrase, keep the name. The named specifics are usually the most information-dense and spiciest part — don't anonymise "DHH" into "someone" or "vibe coding" into "the criticism".)
+**Notable details** (anything specific and interesting that a summary would normally drop — concrete numbers, personal anecdotes, unusual comparisons, and **named callouts**: when the speaker names a specific person, project, company, or coins/uses a signature phrase, keep the name. The named specifics are usually the most information-dense and spiciest part — don't anonymise "DHH" into "someone" or "vibe coding" into "the criticism". Keeping a *name* sharp is different from reproducing a *crude joke* verbatim — per the register note above, you keep the callout and the opinion but may tone down or drop the vulgarity, e.g. a porn-star analogy for outsized work output.)
 
 **Choice quotes** (always include 2-4). Pull the lines that capture the speaker's voice, conviction, or wit — the rhetorical color is part of the content, especially for opinion pieces and rants. Give the translated quote, and where a phrase is culturally loaded or vivid in the original (an idiom, a film reference, an insult), keep the original alongside it with a brief gloss. Example: *"questa armata brancaleone di idioti"* — "this Brancaleone's army of idiots" (ref. to the classic film about a ragtag, incompetent band).
 

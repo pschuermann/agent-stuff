@@ -1,0 +1,48 @@
+{
+  "name": "schup-pi",
+  "version": "0.1.0",
+  "description": "Pirmin Schuermann's personal Pi extensions, skills, themes, and support utilities",
+  "private": true,
+  "type": "module",
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "pi-skill",
+    "pi-theme"
+  ],
+  "pi": {
+    "extensions": [
+      "./extensions/*.ts"
+    ],
+    "skills": [
+      "./skills"
+    ],
+    "themes": [
+      "./themes"
+    ]
+  },
+  "dependencies": {
+    "@google-cloud/local-auth": "^3.0.1",
+    "@mozilla/readability": "^0.6.0",
+    "cheerio": "^1.1.2",
+    "googleapis": "^171.0.0",
+    "jsdom": "^27.0.1",
+    "puppeteer": "^24.31.0",
+    "puppeteer-core": "^23.11.1",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.7.0",
+    "turndown": "^7.2.2",
+    "turndown-plugin-gfm": "^1.0.2",
+    "typescript": "^5.3.3",
+    "ws": "^8.18.0",
+    "youtube-transcript-plus": "^1.0.4"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "typebox": "*"
+  }
+}

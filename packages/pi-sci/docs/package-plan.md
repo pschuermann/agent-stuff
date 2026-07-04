@@ -41,6 +41,7 @@ agent-stuff/
         sci-lit.md
         sci-compare.md
         sci-review.md
+        sci-audit.md
       skills/
         sci-research-workflows/
           SKILL.md
@@ -49,6 +50,8 @@ agent-stuff/
         sci-source-comparison/
           SKILL.md
         sci-claim-review/
+          SKILL.md
+        sci-research-audit/
           SKILL.md
       docs/
         examples.md
@@ -97,6 +100,7 @@ Possible command namespace:
 /sci-lit
 /sci-compare
 /sci-review
+/sci-audit
 ```
 
 Optional alternate shape if we later add a command-router extension:
@@ -225,6 +229,33 @@ Findings grouped as:
 - MAJOR: should fix or disclose
 - MINOR: polish / clarity
 
+### 6. Research audit
+
+Command: `/sci-audit <paper-or-project>`
+
+Purpose: audit a paper, report, benchmark, or claim set against linked code, data, configs, docs, and other public artifacts.
+
+Checks:
+
+- claimed method vs implemented method
+- missing training/inference/evaluation code
+- dataset availability, licensing, schema/splits, and leakage risks
+- benchmark/evaluation reproducibility and metric definitions
+- ambiguous defaults, commands, seeds, hardware, checkpoints, or versions
+- figures/tables/results without raw artifact provenance
+- mismatches between paper/report claims and repository/docs/examples
+
+Outputs:
+
+```text
+outputs/.plans/<slug>-audit-plan.md
+outputs/.drafts/<slug>-audit-evidence.md
+outputs/<slug>-audit.md
+outputs/<slug>.provenance.md
+```
+
+Default boundary: read-only inspection. Do not run untrusted code, install dependencies, train models, mutate repositories, or launch long-running jobs without explicit user approval.
+
 ## Skill design
 
 Add prefixed skills to avoid collisions with generic skill names:
@@ -233,8 +264,9 @@ Add prefixed skills to avoid collisions with generic skill names:
 - `sci-literature-review`
 - `sci-source-comparison`
 - `sci-claim-review`
+- `sci-research-audit`
 
-The skills should trigger when the user asks for deep research, literature reviews, source comparison, research briefs, provenance, evidence tables, or claim verification.
+The skills should trigger when the user asks for deep research, literature reviews, source comparison, research briefs, provenance, evidence tables, claim verification, or research artifact/code/data audits.
 
 Each skill should instruct the agent to use the slash commands where available, or manually follow the same artifact workflow when commands are unavailable.
 
