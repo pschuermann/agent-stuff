@@ -19,6 +19,7 @@ pi install ./packages/pi-sci
 - `/sci-lit <topic>` — produce a paper-focused literature review.
 - `/sci-compare <sources-or-topic>` — compare claims across sources.
 - `/sci-review <file-or-claim>` — adversarially review factual support, citations, and overclaiming.
+- `/sci-audit <paper-or-project>` — audit research claims against code, data, configs, docs, and other artifacts.
 
 ## Artifact layout
 
@@ -33,15 +34,22 @@ outputs/
   <slug>.md
   <slug>.provenance.md
   <slug>-review.md
+  <slug>-audit.md
 ```
 
 Commands should not overwrite existing artifacts without asking unless the user explicitly requested overwrite.
 
 ## Principles
 
+- Execute workflows with durable artifacts; do not stop at protocol descriptions.
 - Plan before broad work.
 - Gather evidence into files before synthesis.
 - Draft from evidence, not memory.
-- Cite factual claims with source links or identifiers.
+- Prefer primary sources, official docs/data, papers, standards, direct statements, and raw artifacts.
+- Inspect sources before using them as support; snippets guide discovery but do not prove claims.
+- Cite factual claims with source links, identifiers, or local artifact paths.
 - Mark unsupported claims and uncertainty plainly.
-- Preserve provenance: searches, sources, files read, unresolved claims, and confidence notes.
+- Label unavailable checks as `BLOCKED` and unverified claims as `UNVERIFIED`.
+- Use subagents only when decomposition clearly improves coverage or reduces context pressure.
+- Preserve provenance: searches, sources, files read, rejected sources, blocked checks, unresolved claims, and confidence notes.
+- Verify final files exist before claiming completion.

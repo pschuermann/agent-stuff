@@ -64,3 +64,18 @@ Expected review:
 ```text
 outputs/my-draft-review.md
 ```
+
+## Research audit
+
+```text
+/sci-audit https://arxiv.org/abs/0000.00000 and https://github.com/example/project
+```
+
+Expected artifacts:
+
+```text
+outputs/.plans/project-audit-plan.md
+outputs/.drafts/project-audit-evidence.md
+outputs/project-audit.md
+outputs/project.provenance.md
+```
