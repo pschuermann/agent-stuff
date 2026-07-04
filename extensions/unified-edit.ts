@@ -1567,7 +1567,14 @@ export default function unifiedEditExtension(pi: ExtensionAPI) {
 				component.settledError = false;
 			}
 
-			requestUnifiedEditPreview(component, text, key, context.cwd, context.argsComplete, () => context.invalidate());
+			// Avoid rendering partial live diffs while the model is still streaming the
+			// edit payload. In terminals such as Ghostty the diff component changes
+			// height rapidly and can leave transient line/fragments that look broken.
+			// Keep the live header/path preview, then build the diff once arguments
+			// are complete (or from the final result below).
+			if (context.argsComplete) {
+				requestUnifiedEditPreview(component, text, key, context.cwd, true, () => context.invalidate());
+			}
 
 			return buildUnifiedEditCallComponent(component, text, theme, context.cwd);
 		},
