@@ -2,7 +2,17 @@ extends: existence
 message: "Inflated framing hook. Say the point directly instead of announcing that it is the real point."
 level: error
 ignorecase: true
+nonword: true
 tokens:
-  - "the real (?:story|point|question|subject|issue|problem|lesson) (?:here )?is"
+  - "the real (?:story|point|question|subject|issue|problem|lesson|value) (?:here )?is"
   - "here's the (?:thing|kicker|catch)"
   - "what's (?:really|actually) (?:going on|happening) (?:here )?is"
+  - "the key here is"
+  - "the point here is"
+  - "the idea here is"
+  - "the takeaway here is"
+  - "this is where it gets interesting"
+  - "this is where things get interesting"
+  - "this is the (?:key|takeaway|insight)"
+  - "\\*\\*Key (?:insight|takeaway|point):?\\*\\*"
+  - "\\*\\*Bottom line:?\\*\\*"

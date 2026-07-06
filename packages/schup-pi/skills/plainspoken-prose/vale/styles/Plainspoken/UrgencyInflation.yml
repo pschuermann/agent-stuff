@@ -1,0 +1,29 @@
+extends: existence
+message: "Manufactured urgency '%s'. Delete it or show the stakes concretely."
+level: error
+ignorecase: true
+tokens:
+  - cannot be overstated
+  - can't be overstated
+  - cannot be understated
+  - cannot be emphasized enough
+  - more important than ever
+  - more critical than ever
+  - more relevant than ever
+  - more urgent than ever
+  - more essential than ever
+  - more significant than ever
+  - has never been more important
+  - has never been more critical
+  - has never been more relevant
+  - have never been more important
+  - the stakes have never been higher
+  - the stakes are higher than ever
+  - the stakes couldn't be higher
+  - at a crossroads
+  - at an inflection point
+  - at a pivotal moment
+  - at a critical juncture
+  - in an increasingly complex world
+  - in an increasingly connected world
+  - in an increasingly uncertain world

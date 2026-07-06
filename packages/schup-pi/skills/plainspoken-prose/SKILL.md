@@ -31,7 +31,7 @@ Use this skill while drafting the first version, not only as a cleanup pass. The
 
 Self-assessment questions do not catch these tells — the process that wrote them will grade them as fine. The check is mechanical.
 
-**For prose being written to a file:** draft to a scratch file first, then lint it with the Vale style that ships with this skill (`vale/` directory here — rules for contrast flips, negation chains, framing hooks, intensifiers, stock AI phrases, and the Kobak et al. excess-vocabulary list):
+**For prose being written to a file:** draft to a scratch file first, then lint it with the Vale style that ships with this skill (`vale/` directory here — rules for contrast flips, negation chains, framing hooks, vague unattributed claims, rhetorical self-answers, manufactured urgency, intensifiers, stock AI phrases, and the Kobak et al. excess-vocabulary list):
 
 ```bash
 vale --config ~/.claude/skills/plainspoken-prose/vale/.vale.ini <draft>

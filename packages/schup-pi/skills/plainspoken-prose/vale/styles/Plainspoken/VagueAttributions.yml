@@ -1,0 +1,46 @@
+extends: existence
+message: "Vague attribution '%s'. Name the actual speaker or source instead of a faceless authority."
+level: error
+ignorecase: true
+tokens:
+  - experts argue
+  - experts suggest
+  - experts believe
+  - experts say
+  - experts agree
+  - experts warn
+  - experts note
+  - experts predict
+  - industry experts
+  - industry observers
+  - industry analysts
+  - observers have noted
+  - critics argue
+  - critics suggest
+  - critics have noted
+  - some critics argue
+  - some experts
+  - some analysts
+  - some observers
+  - some researchers
+  - many experts
+  - many analysts
+  - many observers
+  - many researchers
+  - studies show that
+  - studies suggest that
+  - studies indicate that
+  - studies have shown that
+  - studies have found that
+  - research shows that
+  - research suggests that
+  - research indicates that
+  - several studies
+  - several experts
+  - numerous studies
+  - numerous experts
+  - a growing body of research
+  - a growing body of evidence
+  - a growing number of experts
+  - the evidence suggests
+  - the data suggests
