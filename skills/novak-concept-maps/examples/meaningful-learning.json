@@ -1,0 +1,57 @@
+{
+  "title": "Meaningful Learning",
+  "focus_question": "How does meaningful learning happen in Novak's concept mapping theory?",
+  "concepts": [
+    {"id": "meaningful_learning", "label": "Meaningful Learning", "rank": 0},
+    {"id": "learner", "label": "Learner", "rank": 1},
+    {"id": "prior_knowledge", "label": "Prior Knowledge", "rank": 1},
+    {"id": "new_knowledge", "label": "New Knowledge", "rank": 1},
+    {"id": "concepts", "label": "Concepts", "rank": 2},
+    {"id": "propositions", "label": "Propositions", "rank": 2},
+    {"id": "linking_phrases", "label": "Linking Phrases", "rank": 3},
+    {"id": "concept_maps", "label": "Concept Maps", "rank": 2},
+    {"id": "focus_question", "label": "Focus Question", "rank": 2},
+    {"id": "misconceptions", "label": "Misconceptions", "rank": 3}
+  ],
+  "propositions": [
+    {"id": "P1", "from": "meaningful_learning", "link": "requires", "to": "prior_knowledge", "type": "hierarchy"},
+    {"id": "P2", "from": "learner", "link": "chooses to integrate", "to": "new_knowledge", "type": "hierarchy"},
+    {"id": "P3", "from": "new_knowledge", "link": "is connected with", "to": "prior_knowledge", "type": "hierarchy"},
+    {"id": "P4", "from": "concepts", "link": "combine into", "to": "propositions", "type": "hierarchy"},
+    {"id": "P5", "from": "linking_phrases", "link": "make explicit", "to": "propositions", "type": "hierarchy"},
+    {"id": "P6", "from": "concept_maps", "link": "represent", "to": "propositions", "type": "hierarchy"},
+    {"id": "P7", "from": "focus_question", "link": "sets context for", "to": "concept_maps", "type": "hierarchy"},
+    {"id": "P8", "from": "concept_maps", "link": "can reveal", "to": "misconceptions", "type": "cross-link"},
+    {"id": "P9", "from": "misconceptions", "link": "may be faulty", "to": "propositions", "type": "cross-link"}
+  ],
+  "parking_lot": [
+    "Meaningful Learning",
+    "Learner",
+    "Prior Knowledge",
+    "New Knowledge",
+    "Concepts",
+    "Propositions",
+    "Linking Phrases",
+    "Concept Maps",
+    "Focus Question",
+    "Misconceptions"
+  ],
+  "exercises": [
+    {
+      "type": "fill_link",
+      "prompt": "Concept Maps -> ________ -> Propositions",
+      "answer": "represent"
+    },
+    {
+      "type": "choose_link",
+      "prompt": "Focus Question -> ? -> Concept Maps",
+      "options": ["decorates", "sets context for", "is an example of"],
+      "answer": "sets context for"
+    },
+    {
+      "type": "repair_misconception",
+      "prompt": "Faulty: Concepts -> are the same as -> Propositions. What repair would make this Novak-style?",
+      "answer": "Concepts -> combine into -> Propositions"
+    }
+  ]
+}

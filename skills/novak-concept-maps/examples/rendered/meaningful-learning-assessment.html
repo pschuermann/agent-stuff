@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Meaningful Learning Assessment</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f8f7f2;
+      --ink: #23211d;
+      --muted: #6f6a5f;
+      --line: #4e4a43;
+      --concept-fill: #fffef9;
+      --concept-border: #2f2b25;
+      --phrase-fill: #f8f7f2;
+      --phrase-border: #aaa294;
+      --cross: #9f4c2f;
+      --panel: #ffffff;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Georgia, "Times New Roman", serif;
+    }
+    header {
+      padding: 18px 22px 12px;
+      border-bottom: 1px solid #d7d1c4;
+      background: #fffdf7;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+    h1 {
+      font-size: 22px;
+      line-height: 1.15;
+      margin: 0 0 6px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+    .focus {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+      max-width: 86ch;
+    }
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    button {
+      border: 1px solid #b9b1a3;
+      background: #fffaf0;
+      color: var(--ink);
+      padding: 7px 10px;
+      border-radius: 4px;
+      font: 13px ui-sans-serif, system-ui, sans-serif;
+      cursor: pointer;
+    }
+    button:hover { background: #f0eadc; }
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      min-height: calc(100vh - 96px);
+    }
+    .stage {
+      overflow: auto;
+      border-right: 1px solid #d7d1c4;
+      background:
+        linear-gradient(rgba(40, 36, 30, .035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(40, 36, 30, .035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 24px 24px;
+    }
+    .canvas-wrap {
+      transform-origin: top left;
+      width: 900px;
+      height: 640px;
+      padding: 0;
+    }
+    .canvas {
+      position: relative;
+      width: 900px;
+      height: 640px;
+    }
+    svg.links {
+      position: absolute;
+      inset: 0;
+      width: 900px;
+      height: 640px;
+      pointer-events: none;
+      overflow: visible;
+    }
+    .connector {
+      stroke: var(--line);
+      stroke-width: 1.45;
+      vector-effect: non-scaling-stroke;
+    }
+    .connector.cross {
+      stroke: var(--cross);
+      stroke-dasharray: 6 5;
+    }
+    .node {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      white-space: pre-line;
+      line-height: 1.12;
+      padding: 5px 9px;
+      z-index: 2;
+      letter-spacing: 0;
+    }
+    .concept {
+      background: var(--concept-fill);
+      border: 1.5px solid var(--concept-border);
+      border-radius: 10px;
+      box-shadow: 0 1px 0 rgba(35, 33, 29, .18);
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .phrase {
+      background: var(--phrase-fill);
+      border: 1px solid var(--phrase-border);
+      border-radius: 3px;
+      font-size: 12px;
+      font-style: italic;
+      color: #35312b;
+    }
+    .phrase.cross {
+      border-color: #b36a4c;
+      color: #77341e;
+      background: #fff8f3;
+    }
+    body.theme-cmap-yellow {
+      --paper: #fbfbfb;
+      --concept-fill: #ece66b;
+      --concept-border: #ece66b;
+      --phrase-fill: rgba(255, 255, 255, .82);
+      --phrase-border: transparent;
+      --line: #333333;
+      --cross: #8a452c;
+    }
+    body.theme-cmap-yellow .concept {
+      border-radius: 7px;
+      border-color: var(--concept-border);
+      box-shadow: 5px 5px 0 #8d902f;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    body.theme-cmap-yellow .phrase {
+      border-color: transparent;
+      background: rgba(255, 255, 255, .72);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11px;
+      font-style: normal;
+    }
+    body.theme-cmap-blue {
+      --paper: #ffffff;
+      --concept-fill: #ffffff;
+      --concept-border: #18179a;
+      --phrase-fill: rgba(255, 255, 255, .82);
+      --phrase-border: transparent;
+      --line: #111111;
+      --cross: #111111;
+    }
+    body.theme-cmap-blue .concept {
+      border-radius: 0;
+      border: 2px solid var(--concept-border);
+      box-shadow: none;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+    }
+    body.theme-cmap-blue .phrase {
+      border-color: transparent;
+      background: rgba(255, 255, 255, .72);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 18px;
+      font-style: normal;
+      font-weight: 800;
+    }
+    aside {
+      background: #fffdf7;
+      overflow: auto;
+      padding: 16px;
+    }
+    body.details-hidden main {
+      grid-template-columns: 1fr;
+    }
+    body.details-hidden aside {
+      display: none;
+    }
+    .panel {
+      border-top: 1px solid #d7d1c4;
+      padding-top: 14px;
+      margin-top: 14px;
+    }
+    .panel:first-child {
+      border-top: 0;
+      margin-top: 0;
+      padding-top: 0;
+    }
+    h2 {
+      font: 700 14px ui-sans-serif, system-ui, sans-serif;
+      margin: 0 0 10px;
+      letter-spacing: 0;
+    }
+    h3 {
+      font: 700 12px ui-sans-serif, system-ui, sans-serif;
+      margin: 12px 0 7px;
+      letter-spacing: 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font: 12px ui-sans-serif, system-ui, sans-serif;
+    }
+    th, td {
+      border-bottom: 1px solid #e3ded3;
+      padding: 7px 5px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { color: var(--muted); font-weight: 700; }
+    ul, ol {
+      padding-left: 20px;
+      margin: 0;
+      font: 13px ui-sans-serif, system-ui, sans-serif;
+      line-height: 1.45;
+    }
+    li + li { margin-top: 7px; }
+    details {
+      margin-top: 6px;
+      color: var(--muted);
+    }
+    summary { cursor: pointer; }
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; }
+      .stage { min-height: 62vh; border-right: 0; border-bottom: 1px solid #d7d1c4; }
+      aside { max-height: none; }
+    }
+  </style>
+</head>
+<body class="theme-cmap-yellow">
+  <header>
+    <h1>Meaningful Learning Assessment</h1>
+    <p class="focus"><strong>Focus question:</strong> How does meaningful learning happen?</p>
+    <div class="toolbar" aria-label="Map controls">
+      <button type="button" data-zoom="in">Zoom In</button>
+      <button type="button" data-zoom="out">Zoom Out</button>
+      <button type="button" data-zoom="reset">Reset</button>
+      <button type="button" data-toggle-details>Hide Details</button>
+    </div>
+  </header>
+  <main>
+    <section class="stage" aria-label="Concept map canvas">
+      <div class="canvas-wrap" id="canvasWrap">
+        <div class="canvas">
+          <svg class="links" viewBox="0 0 900 640" role="img" aria-label="Concept map links">
+            <defs>
+              <marker id="arrow" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L9,4 L0,8 z" fill="var(--line)"></path>
+              </marker>
+            </defs>
+            <line class="connector" x1="455.0" y1="66.0" x2="271.0" y2="137.0" /><line class="connector" x1="271.0" y1="137.0" x2="205.0" y2="214.0" marker-end="url(#arrow)" /><line class="connector" x1="455.0" y1="66.0" x2="542.0" y2="137.0" /><line class="connector" x1="542.0" y1="137.0" x2="490.0" y2="214.0" marker-end="url(#arrow)" /><line class="connector" x1="490.0" y1="214.0" x2="406.0" y2="292.0" /><line class="connector" x1="406.0" y1="292.0" x2="335.0" y2="374.0" marker-end="url(#arrow)" /><line class="connector cross" x1="647.5" y1="374.0" x2="508.0" y2="382.0" /><line class="connector cross" x1="508.0" y1="382.0" x2="335.0" y2="374.0" marker-end="url(#arrow)" />
+          </svg>
+          <div class="node concept" id="n-meaningful_learning" style="left:360.0px;top:40.0px;width:190px;height:52px">Meaningful Learning</div><div class="node concept" id="n-prior_knowledge" style="left:120.0px;top:190.0px;width:170px;height:48px">Prior Knowledge</div><div class="node concept" id="n-new_concepts" style="left:410.0px;top:190.0px;width:160px;height:48px">New Concepts</div><div class="node concept" id="n-propositions" style="left:260.0px;top:350.0px;width:150px;height:48px">Propositions</div><div class="node concept" id="n-concept_maps" style="left:570.0px;top:350.0px;width:155px;height:48px">Concept Maps</div><div class="node phrase" id="n-lp_P1" style="left:230.0px;top:120.0px;width:82px;height:34px">requires</div><div class="node phrase" id="n-lp_P2" style="left:495.0px;top:120.0px;width:94px;height:34px">integrates</div><div class="node phrase" id="n-lp_P3" style="left:370.0px;top:275.0px;width:72px;height:34px">form</div><div class="node phrase cross" id="n-lp_P4" style="left:455.0px;top:365.0px;width:106px;height:34px">make visible</div>
+        </div>
+      </div>
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Propositions</h2>
+        <table>
+          <thead><tr><th>ID</th><th>Proposition</th><th>Type</th></tr></thead>
+          <tbody><tr><td>P1</td><td>Meaningful Learning requires Prior Knowledge</td><td>hierarchy</td></tr><tr><td>P2</td><td>Meaningful Learning integrates New Concepts</td><td>hierarchy</td></tr><tr><td>P3</td><td>New Concepts form Propositions</td><td>hierarchy</td></tr><tr><td>P4</td><td>Concept Maps make visible Propositions</td><td>cross-link</td></tr></tbody>
+        </table>
+      </section>
+      <section class="panel"><h2>Assessment Context</h2><table><tbody><tr><th>Mode</th><td>learner_vs_reference</td></tr><tr><th>Objective</th><td>Diagnose whether the learner treats meaningful learning as integration with prior knowledge rather than as diagram styling.</td></tr><tr><th>Orientation</th><td>Read each concept-link-concept line as a sentence. Some questions ask for a missing concept or linking phrase inside the map.</td></tr><tr><th>Reference map</th><td>expert meaningful-learning map</td></tr><tr><th>Learner map</th><td>learner draft map</td></tr></tbody></table><h3>Comparison Summary</h3><ul><li>Reference map treats prior knowledge as required for meaningful learning.</li><li>Common weak learner map treats concept maps mainly as attractive diagrams.</li><li>Assessment should target the relation among prior knowledge, new concepts, and propositions.</li></ul></section>
+      <section class="panel">
+        <h2>Parking Lot</h2>
+        <ul><li>Meaningful Learning</li><li>Prior Knowledge</li><li>New Concepts</li><li>Propositions</li><li>Concept Maps</li><li>Rote Memorization</li></ul>
+      </section>
+      
+      <section class="panel">
+        <h2>Learning Checks</h2>
+        <ol><li><p><strong>Mccm:</strong> Which linking phrase best completes this proposition: Meaningful Learning -&gt; ________ -&gt; Prior Knowledge?</p><ol type="A"><li>requires</li><li>decorates</li><li>is unrelated to</li></ol><details><summary>Answer</summary><p>requires</p><p><strong>Rationale:</strong> The item tests whether the learner sees prior knowledge as a condition for meaningful learning.</p><p><strong>Rubric:</strong> Correct: selects a necessity relation. Partial: explains prior knowledge matters but chooses a vague link. Incorrect: treats prior knowledge as irrelevant.</p></details></li><li><p><strong>Safi:</strong> Choose two concepts from the parking lot and write a linking phrase that explains why concept maps help diagnose understanding.</p><details><summary>Answer</summary><p>Concept Maps -&gt; make visible -&gt; Propositions</p><p><strong>Rationale:</strong> A strong answer names the proposition structure, not just the visual look of the map.</p><p><strong>Rubric:</strong> Correct: links concept maps to propositions or relationships. Partial: links concept maps to concepts only. Incorrect: focuses only on neatness, memory, or decoration.</p></details></li></ol>
+      </section>
+    </aside>
+  </main>
+  <script>
+    const wrap = document.getElementById('canvasWrap');
+    const canvasWidth = 900;
+    const canvasHeight = 640;
+    let scale = 1;
+    function applyScale() {
+      wrap.style.transform = `scale(${scale})`;
+      wrap.style.marginRight = `${canvasWidth * (scale - 1)}px`;
+      wrap.style.marginBottom = `${canvasHeight * (scale - 1)}px`;
+    }
+    document.querySelectorAll('[data-zoom]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const action = button.dataset.zoom;
+        if (action === 'in') scale = Math.min(1.8, scale + 0.15);
+        if (action === 'out') scale = Math.max(0.55, scale - 0.15);
+        if (action === 'reset') scale = 1;
+        applyScale();
+      });
+    });
+    const detailsButton = document.querySelector('[data-toggle-details]');
+    if (new URLSearchParams(window.location.search).get('details') === 'hidden') {
+      document.body.classList.add('details-hidden');
+      detailsButton.textContent = 'Show Details';
+    }
+    detailsButton.addEventListener('click', () => {
+      document.body.classList.toggle('details-hidden');
+      detailsButton.textContent = document.body.classList.contains('details-hidden') ? 'Show Details' : 'Hide Details';
+    });
+  </script>
+</body>
+</html>

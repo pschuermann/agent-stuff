@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>What Causes Seasons</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f8f7f2;
+      --ink: #23211d;
+      --muted: #6f6a5f;
+      --line: #4e4a43;
+      --concept-fill: #fffef9;
+      --concept-border: #2f2b25;
+      --phrase-fill: #f8f7f2;
+      --phrase-border: #aaa294;
+      --cross: #9f4c2f;
+      --panel: #ffffff;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Georgia, "Times New Roman", serif;
+    }
+    header {
+      padding: 18px 22px 12px;
+      border-bottom: 1px solid #d7d1c4;
+      background: #fffdf7;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+    h1 {
+      font-size: 22px;
+      line-height: 1.15;
+      margin: 0 0 6px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+    .focus {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+      max-width: 86ch;
+    }
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    button {
+      border: 1px solid #b9b1a3;
+      background: #fffaf0;
+      color: var(--ink);
+      padding: 7px 10px;
+      border-radius: 4px;
+      font: 13px ui-sans-serif, system-ui, sans-serif;
+      cursor: pointer;
+    }
+    button:hover { background: #f0eadc; }
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      min-height: calc(100vh - 96px);
+    }
+    .stage {
+      overflow: auto;
+      border-right: 1px solid #d7d1c4;
+      background:
+        linear-gradient(rgba(40, 36, 30, .035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(40, 36, 30, .035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 24px 24px;
+    }
+    .canvas-wrap {
+      transform-origin: top left;
+      width: 1065px;
+      height: 753px;
+      padding: 0;
+    }
+    .canvas {
+      position: relative;
+      width: 1065px;
+      height: 753px;
+    }
+    svg.links {
+      position: absolute;
+      inset: 0;
+      width: 1065px;
+      height: 753px;
+      pointer-events: none;
+      overflow: visible;
+    }
+    .connector {
+      stroke: var(--line);
+      stroke-width: 1.45;
+      vector-effect: non-scaling-stroke;
+    }
+    .connector.cross {
+      stroke: var(--cross);
+      stroke-dasharray: 6 5;
+    }
+    .node {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      white-space: pre-line;
+      line-height: 1.12;
+      padding: 5px 9px;
+      z-index: 2;
+      letter-spacing: 0;
+    }
+    .concept {
+      background: var(--concept-fill);
+      border: 1.5px solid var(--concept-border);
+      border-radius: 10px;
+      box-shadow: 0 1px 0 rgba(35, 33, 29, .18);
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .phrase {
+      background: var(--phrase-fill);
+      border: 1px solid var(--phrase-border);
+      border-radius: 3px;
+      font-size: 12px;
+      font-style: italic;
+      color: #35312b;
+    }
+    .phrase.cross {
+      border-color: #b36a4c;
+      color: #77341e;
+      background: #fff8f3;
+    }
+    body.theme-cmap-yellow {
+      --paper: #fbfbfb;
+      --concept-fill: #ece66b;
+      --concept-border: #ece66b;
+      --phrase-fill: rgba(255, 255, 255, .82);
+      --phrase-border: transparent;
+      --line: #333333;
+      --cross: #8a452c;
+    }
+    body.theme-cmap-yellow .concept {
+      border-radius: 7px;
+      border-color: var(--concept-border);
+      box-shadow: 5px 5px 0 #8d902f;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    body.theme-cmap-yellow .phrase {
+      border-color: transparent;
+      background: rgba(255, 255, 255, .72);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11px;
+      font-style: normal;
+    }
+    body.theme-cmap-blue {
+      --paper: #ffffff;
+      --concept-fill: #ffffff;
+      --concept-border: #18179a;
+      --phrase-fill: rgba(255, 255, 255, .82);
+      --phrase-border: transparent;
+      --line: #111111;
+      --cross: #111111;
+    }
+    body.theme-cmap-blue .concept {
+      border-radius: 0;
+      border: 2px solid var(--concept-border);
+      box-shadow: none;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+    }
+    body.theme-cmap-blue .phrase {
+      border-color: transparent;
+      background: rgba(255, 255, 255, .72);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 18px;
+      font-style: normal;
+      font-weight: 800;
+    }
+    aside {
+      background: #fffdf7;
+      overflow: auto;
+      padding: 16px;
+    }
+    body.details-hidden main {
+      grid-template-columns: 1fr;
+    }
+    body.details-hidden aside {
+      display: none;
+    }
+    .panel {
+      border-top: 1px solid #d7d1c4;
+      padding-top: 14px;
+      margin-top: 14px;
+    }
+    .panel:first-child {
+      border-top: 0;
+      margin-top: 0;
+      padding-top: 0;
+    }
+    h2 {
+      font: 700 14px ui-sans-serif, system-ui, sans-serif;
+      margin: 0 0 10px;
+      letter-spacing: 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font: 12px ui-sans-serif, system-ui, sans-serif;
+    }
+    th, td {
+      border-bottom: 1px solid #e3ded3;
+      padding: 7px 5px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { color: var(--muted); font-weight: 700; }
+    ul, ol {
+      padding-left: 20px;
+      margin: 0;
+      font: 13px ui-sans-serif, system-ui, sans-serif;
+      line-height: 1.45;
+    }
+    li + li { margin-top: 7px; }
+    details {
+      margin-top: 6px;
+      color: var(--muted);
+    }
+    summary { cursor: pointer; }
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; }
+      .stage { min-height: 62vh; border-right: 0; border-bottom: 1px solid #d7d1c4; }
+      aside { max-height: none; }
+    }
+  </style>
+</head>
+<body class="theme-cmap-yellow">
+  <header>
+    <h1>What Causes Seasons</h1>
+    <p class="focus"><strong>Focus question:</strong> What causes seasons?</p>
+    <div class="toolbar" aria-label="Map controls">
+      <button type="button" data-zoom="in">Zoom In</button>
+      <button type="button" data-zoom="out">Zoom Out</button>
+      <button type="button" data-zoom="reset">Reset</button>
+      <button type="button" data-toggle-details>Hide Details</button>
+    </div>
+  </header>
+  <main>
+    <section class="stage" aria-label="Concept map canvas">
+      <div class="canvas-wrap" id="canvasWrap">
+        <div class="canvas">
+          <svg class="links" viewBox="0 0 1065 753" role="img" aria-label="Concept map links">
+            <defs>
+              <marker id="arrow" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L9,4 L0,8 z" fill="var(--line)"></path>
+              </marker>
+            </defs>
+            <line class="connector" x1="406.0" y1="61.0" x2="433.0" y2="109.0" /><line class="connector" x1="433.0" y1="109.0" x2="400.0" y2="179.0" marker-end="url(#arrow)" /><line class="connector" x1="400.0" y1="179.0" x2="547.0" y2="191.0" /><line class="connector" x1="547.0" y1="191.0" x2="675.0" y2="185.0" marker-end="url(#arrow)" /><line class="connector" x1="400.0" y1="179.0" x2="325.0" y2="257.0" /><line class="connector" x1="325.0" y1="257.0" x2="197.5" y2="314.0" marker-end="url(#arrow)" /><line class="connector" x1="400.0" y1="179.0" x2="505.0" y2="257.0" /><line class="connector" x1="505.0" y1="257.0" x2="532.5" y2="314.0" marker-end="url(#arrow)" /><line class="connector" x1="197.5" y1="314.0" x2="118.0" y2="377.0" /><line class="connector" x1="118.0" y1="377.0" x2="122.5" y2="451.0" marker-end="url(#arrow)" /><line class="connector" x1="197.5" y1="314.0" x2="461.0" y2="377.0" /><line class="connector" x1="461.0" y1="377.0" x2="652.5" y2="451.0" marker-end="url(#arrow)" /><line class="connector" x1="532.5" y1="314.0" x2="258.0" y2="387.0" /><line class="connector" x1="258.0" y1="387.0" x2="122.5" y2="451.0" marker-end="url(#arrow)" /><line class="connector" x1="532.5" y1="314.0" x2="625.0" y2="377.0" /><line class="connector" x1="625.0" y1="377.0" x2="652.5" y2="451.0" marker-end="url(#arrow)" /><line class="connector" x1="532.5" y1="314.0" x2="445.0" y2="422.0" /><line class="connector" x1="445.0" y1="422.0" x2="307.5" y2="494.0" marker-end="url(#arrow)" /><line class="connector" x1="197.5" y1="314.0" x2="445.0" y2="447.0" /><line class="connector" x1="445.0" y1="447.0" x2="560.0" y2="504.0" marker-end="url(#arrow)" /><line class="connector" x1="307.5" y1="494.0" x2="231.0" y2="562.0" /><line class="connector" x1="231.0" y1="562.0" x2="152.5" y2="604.0" marker-end="url(#arrow)" /><line class="connector" x1="307.5" y1="494.0" x2="391.0" y2="572.0" /><line class="connector" x1="391.0" y1="572.0" x2="442.5" y2="604.0" marker-end="url(#arrow)" /><line class="connector" x1="152.5" y1="604.0" x2="126.0" y2="527.0" /><line class="connector" x1="126.0" y1="527.0" x2="122.5" y2="451.0" marker-end="url(#arrow)" /><line class="connector" x1="442.5" y1="604.0" x2="541.0" y2="517.0" /><line class="connector" x1="541.0" y1="517.0" x2="652.5" y2="451.0" marker-end="url(#arrow)" /><line class="connector" x1="560.0" y1="504.0" x2="606.0" y2="562.0" /><line class="connector" x1="606.0" y1="562.0" x2="710.0" y2="554.0" marker-end="url(#arrow)" /><line class="connector" x1="710.0" y1="554.0" x2="821.0" y2="557.0" /><line class="connector" x1="821.0" y1="557.0" x2="877.5" y2="540.0" marker-end="url(#arrow)" />
+          </svg>
+          <div class="node concept" id="n-seasons" style="left:350.0px;top:40.0px;width:112px;height:42px">Seasons</div><div class="node concept" id="n-sunlight" style="left:340.0px;top:150.0px;width:120px;height:58px">Amount of
+Sunlight</div><div class="node concept" id="n-temperature_variations" style="left:600.0px;top:150.0px;width:150px;height:70px">Seasonal
+Temperature
+Variations</div><div class="node concept" id="n-length_day" style="left:145.0px;top:285.0px;width:105px;height:58px">Length
+of Day</div><div class="node concept" id="n-height_sun" style="left:455.0px;top:285.0px;width:155px;height:58px">Height of Sun
+above Horizon</div><div class="node concept" id="n-summer" style="left:70.0px;top:430.0px;width:105px;height:42px">Summer</div><div class="node concept" id="n-winter" style="left:600.0px;top:430.0px;width:105px;height:42px">Winter</div><div class="node concept" id="n-tilt" style="left:240.0px;top:455.0px;width:135px;height:78px">23.5 Degrees
+Tilt of Axis
+of Earth</div><div class="node concept" id="n-position" style="left:500.0px;top:475.0px;width:120px;height:58px">Position
+in Orbit</div><div class="node concept" id="n-towards_sun" style="left:95.0px;top:575.0px;width:115px;height:58px">Towards
+the Sun</div><div class="node concept" id="n-away_sun" style="left:385.0px;top:575.0px;width:115px;height:58px">Away
+from Sun</div><div class="node concept" id="n-distance" style="left:650.0px;top:525.0px;width:120px;height:58px">Distance
+to Sun</div><div class="node concept" id="n-negligible" style="left:810.0px;top:505.0px;width:135px;height:70px">Negligible
+Effect on
+Seasons</div><div class="node phrase" id="n-lp_P1" style="left:365.0px;top:92.0px;width:136px;height:34px">are determined by</div><div class="node phrase" id="n-lp_P2" style="left:500.0px;top:174.0px;width:94px;height:34px">results in</div><div class="node phrase" id="n-lp_P3" style="left:260.0px;top:240.0px;width:130px;height:34px">is determined by</div><div class="node phrase" id="n-lp_P4" style="left:440.0px;top:240.0px;width:130px;height:34px">is determined by</div><div class="node phrase" id="n-lp_P5" style="left:65.0px;top:360.0px;width:106px;height:34px">is longer in</div><div class="node phrase" id="n-lp_P6" style="left:405.0px;top:360.0px;width:112px;height:34px">is shorter in</div><div class="node phrase" id="n-lp_P7" style="left:205.0px;top:370.0px;width:106px;height:34px">is higher in</div><div class="node phrase" id="n-lp_P8" style="left:575.0px;top:360.0px;width:100px;height:34px">is lower in</div><div class="node phrase" id="n-lp_P9" style="left:380.0px;top:405.0px;width:130px;height:34px">is determined by</div><div class="node phrase" id="n-lp_P10" style="left:380.0px;top:430.0px;width:130px;height:34px">is determined by</div><div class="node phrase" id="n-lp_P11" style="left:195.0px;top:545.0px;width:72px;height:34px">points</div><div class="node phrase" id="n-lp_P12" style="left:355.0px;top:555.0px;width:72px;height:34px">points</div><div class="node phrase" id="n-lp_P13" style="left:90.0px;top:510.0px;width:72px;height:34px">in</div><div class="node phrase" id="n-lp_P14" style="left:505.0px;top:500.0px;width:72px;height:34px">in</div><div class="node phrase" id="n-lp_P15" style="left:520.0px;top:545.0px;width:172px;height:34px">has slight variation in</div><div class="node phrase" id="n-lp_P16" style="left:785.0px;top:540.0px;width:72px;height:34px">has</div>
+        </div>
+      </div>
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Propositions</h2>
+        <table>
+          <thead><tr><th>ID</th><th>Proposition</th><th>Type</th></tr></thead>
+          <tbody><tr><td>P1</td><td>Seasons are determined by Amount of
+Sunlight</td><td>hierarchy</td></tr><tr><td>P2</td><td>Amount of
+Sunlight results in Seasonal
+Temperature
+Variations</td><td>hierarchy</td></tr><tr><td>P3</td><td>Amount of
+Sunlight is determined by Length
+of Day</td><td>hierarchy</td></tr><tr><td>P4</td><td>Amount of
+Sunlight is determined by Height of Sun
+above Horizon</td><td>hierarchy</td></tr><tr><td>P5</td><td>Length
+of Day is longer in Summer</td><td>hierarchy</td></tr><tr><td>P6</td><td>Length
+of Day is shorter in Winter</td><td>hierarchy</td></tr><tr><td>P7</td><td>Height of Sun
+above Horizon is higher in Summer</td><td>hierarchy</td></tr><tr><td>P8</td><td>Height of Sun
+above Horizon is lower in Winter</td><td>hierarchy</td></tr><tr><td>P9</td><td>Height of Sun
+above Horizon is determined by 23.5 Degrees
+Tilt of Axis
+of Earth</td><td>hierarchy</td></tr><tr><td>P10</td><td>Length
+of Day is determined by Position
+in Orbit</td><td>hierarchy</td></tr><tr><td>P11</td><td>23.5 Degrees
+Tilt of Axis
+of Earth points Towards
+the Sun</td><td>hierarchy</td></tr><tr><td>P12</td><td>23.5 Degrees
+Tilt of Axis
+of Earth points Away
+from Sun</td><td>hierarchy</td></tr><tr><td>P13</td><td>Towards
+the Sun in Summer</td><td>hierarchy</td></tr><tr><td>P14</td><td>Away
+from Sun in Winter</td><td>hierarchy</td></tr><tr><td>P15</td><td>Position
+in Orbit has slight variation in Distance
+to Sun</td><td>hierarchy</td></tr><tr><td>P16</td><td>Distance
+to Sun has Negligible
+Effect on
+Seasons</td><td>hierarchy</td></tr></tbody>
+        </table>
+      </section>
+      <section class="panel">
+        <h2>Parking Lot</h2>
+        <ul><li>Seasons</li><li>Amount of Sunlight</li><li>Seasonal Temperature Variations</li><li>Length of Day</li><li>Height of Sun above Horizon</li><li>Summer</li><li>Winter</li><li>23.5 Degrees Tilt of Axis of Earth</li><li>Position in Orbit</li><li>Distance to Sun</li></ul>
+      </section>
+      
+      <section class="panel">
+        <h2>Learning Checks</h2>
+        <ol><li><p>Seasons -&gt; ________ -&gt; Amount of Sunlight</p><details><summary>Answer</summary><p>are determined by</p></details></li><li><p>Height of Sun above Horizon -&gt; ? -&gt; Winter</p><ol type="A"><li>is lower in</li><li>is longer in</li><li>has slight variation in</li></ol><details><summary>Answer</summary><p>is lower in</p></details></li></ol>
+      </section>
+    </aside>
+  </main>
+  <script>
+    const wrap = document.getElementById('canvasWrap');
+    const canvasWidth = 1065;
+    const canvasHeight = 753;
+    let scale = 1;
+    function applyScale() {
+      wrap.style.transform = `scale(${scale})`;
+      wrap.style.marginRight = `${canvasWidth * (scale - 1)}px`;
+      wrap.style.marginBottom = `${canvasHeight * (scale - 1)}px`;
+    }
+    document.querySelectorAll('[data-zoom]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const action = button.dataset.zoom;
+        if (action === 'in') scale = Math.min(1.8, scale + 0.15);
+        if (action === 'out') scale = Math.max(0.55, scale - 0.15);
+        if (action === 'reset') scale = 1;
+        applyScale();
+      });
+    });
+    const detailsButton = document.querySelector('[data-toggle-details]');
+    if (new URLSearchParams(window.location.search).get('details') === 'hidden') {
+      document.body.classList.add('details-hidden');
+      detailsButton.textContent = 'Show Details';
+    }
+    detailsButton.addEventListener('click', () => {
+      document.body.classList.toggle('details-hidden');
+      detailsButton.textContent = document.body.classList.contains('details-hidden') ? 'Show Details' : 'Hide Details';
+    });
+  </script>
+</body>
+</html>

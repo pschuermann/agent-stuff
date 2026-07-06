@@ -1,0 +1,57 @@
+{
+  "title": "Meaningful Learning Assessment",
+  "theme": "cmap-yellow",
+  "focus_question": "How does meaningful learning happen?",
+  "concepts": [
+    {"id": "meaningful_learning", "label": "Meaningful Learning", "rank": 0, "x": 360, "y": 40, "w": 190, "h": 52},
+    {"id": "prior_knowledge", "label": "Prior Knowledge", "rank": 1, "x": 120, "y": 190, "w": 170, "h": 48},
+    {"id": "new_concepts", "label": "New Concepts", "rank": 1, "x": 410, "y": 190, "w": 160, "h": 48},
+    {"id": "propositions", "label": "Propositions", "rank": 2, "x": 260, "y": 350, "w": 150, "h": 48},
+    {"id": "concept_maps", "label": "Concept Maps", "rank": 2, "x": 570, "y": 350, "w": 155, "h": 48}
+  ],
+  "propositions": [
+    {"id": "P1", "from": "meaningful_learning", "link": "requires", "to": "prior_knowledge", "type": "hierarchy", "phrase_x": 230, "phrase_y": 120},
+    {"id": "P2", "from": "meaningful_learning", "link": "integrates", "to": "new_concepts", "type": "hierarchy", "phrase_x": 495, "phrase_y": 120},
+    {"id": "P3", "from": "new_concepts", "link": "form", "to": "propositions", "type": "hierarchy", "phrase_x": 370, "phrase_y": 275},
+    {"id": "P4", "from": "concept_maps", "link": "make visible", "to": "propositions", "type": "cross-link", "phrase_x": 455, "phrase_y": 365}
+  ],
+  "assessment": {
+    "mode": "learner_vs_reference",
+    "objective": "Diagnose whether the learner treats meaningful learning as integration with prior knowledge rather than as diagram styling.",
+    "orientation": "Read each concept-link-concept line as a sentence. Some questions ask for a missing concept or linking phrase inside the map.",
+    "reference_map": "expert meaningful-learning map",
+    "learner_map": "learner draft map",
+    "comparison_summary": [
+      "Reference map treats prior knowledge as required for meaningful learning.",
+      "Common weak learner map treats concept maps mainly as attractive diagrams.",
+      "Assessment should target the relation among prior knowledge, new concepts, and propositions."
+    ]
+  },
+  "parking_lot": [
+    "Meaningful Learning",
+    "Prior Knowledge",
+    "New Concepts",
+    "Propositions",
+    "Concept Maps",
+    "Rote Memorization"
+  ],
+  "exercises": [
+    {
+      "type": "mccm",
+      "prompt": "Which linking phrase best completes this proposition: Meaningful Learning -> ________ -> Prior Knowledge?",
+      "options": ["requires", "decorates", "is unrelated to"],
+      "answer": "requires",
+      "rationale": "The item tests whether the learner sees prior knowledge as a condition for meaningful learning.",
+      "rubric": "Correct: selects a necessity relation. Partial: explains prior knowledge matters but chooses a vague link. Incorrect: treats prior knowledge as irrelevant.",
+      "source_propositions": ["P1"]
+    },
+    {
+      "type": "safi",
+      "prompt": "Choose two concepts from the parking lot and write a linking phrase that explains why concept maps help diagnose understanding.",
+      "answer": "Concept Maps -> make visible -> Propositions",
+      "rationale": "A strong answer names the proposition structure, not just the visual look of the map.",
+      "rubric": "Correct: links concept maps to propositions or relationships. Partial: links concept maps to concepts only. Incorrect: focuses only on neatness, memory, or decoration.",
+      "source_propositions": ["P4"]
+    }
+  ]
+}

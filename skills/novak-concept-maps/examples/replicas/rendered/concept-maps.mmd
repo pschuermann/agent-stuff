@@ -1,0 +1,61 @@
+flowchart TB
+  concept_maps["Concept Maps"]
+  focus_questions["'Focus<br/>Question(s)'"]
+  affect["Associated<br/>Feelings or Affect"]
+  organized_knowledge["Organized<br/>Knowledge"]
+  concepts["Concepts"]
+  context["Context<br/>Dependent"]
+  effective_learning["Effective<br/>Learning"]
+  effective_teaching["Effective<br/>Teaching"]
+  linking_words["Linking<br/>Words"]
+  propositions["Propositions"]
+  crosslinks["Crosslinks"]
+  hierarchy["Hierarchically<br/>Structured"]
+  labeled["Labeled"]
+  perceived["Perceived<br/>Regularities<br/>or Patterns"]
+  personal["Personal"]
+  social["Social"]
+  units["Units<br/>of Meaning"]
+  cognitive_structure["Cognitive<br/>Structure"]
+  creativity["Creativity"]
+  events["Events<br/>(Happenings)"]
+  experts["Experts"]
+  interrelationships["Interrelationships"]
+  objects["Objects<br/>(Things)"]
+  symbols["Symbols"]
+  words["Words"]
+  different_segments["Different<br/>Map Segments"]
+  infants["Infants"]
+  concept_maps -->|"represent"| organized_knowledge
+  concept_maps -->|"help to answer"| focus_questions
+  organized_knowledge -->|"needed to answer"| focus_questions
+  organized_knowledge -->|"includes"| affect
+  affect -->|"add to"| concepts
+  organized_knowledge -->|"is comprised of"| concepts
+  organized_knowledge -->|"is comprised of"| propositions
+  concepts -->|"connected using"| linking_words
+  linking_words -->|"used to form"| propositions
+  concepts -->|"are"| perceived
+  concepts -->|"are"| labeled
+  concepts -->|"are"| hierarchy
+  propositions -->|"are"| units
+  propositions -->|"may be"| crosslinks
+  organized_knowledge -->|"is"| context
+  focus_questions -->|"are"| context
+  organized_knowledge -->|"necessary for"| effective_teaching
+  organized_knowledge -->|"necessary for"| effective_learning
+  context -->|"e.g."| personal
+  context -->|"e.g."| social
+  perceived -->|"in"| events
+  perceived -->|"in"| objects
+  labeled -->|"with"| symbols
+  labeled -->|"with"| words
+  units -->|"constructed in"| cognitive_structure
+  hierarchy -->|"aids"| creativity
+  hierarchy -->|"especially with"| experts
+  hierarchy -->|"in"| cognitive_structure
+  creativity -.->|"begins with"| infants
+  perceived -->|"begin with"| infants
+  creativity -.->|"needed to see"| interrelationships
+  crosslinks -->|"show"| interrelationships
+  interrelationships -->|"between"| different_segments

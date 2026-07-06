@@ -1,0 +1,44 @@
+flowchart TB
+  birds["Birds"]
+  focus["What are Birds?"]
+  eggs["Eggs"]
+  endotherms["Endotherms"]
+  food["Food"]
+  sexually["Sexually"]
+  two_wings["Two<br/>Wings"]
+  two_feet["Two Feet"]
+  beaks["Beaks"]
+  feathers["Feathers"]
+  hollow_bones["Hollow<br/>Bones"]
+  rapid_digestive["Rapid Digestive<br/>Systems"]
+  warm_blooded["Warm-Blooded<br/>Animals"]
+  temperature["Constant Body<br/>Temperature"]
+  heat["Heat"]
+  metabolism["High<br/>metabolism"]
+  insulation["Insulation"]
+  light_body["Light body<br/>weights"]
+  energy["Energy"]
+  fly["Fly"]
+  birds -->|"have"| two_feet
+  birds -->|"lay"| eggs
+  birds -->|"have"| two_wings
+  birds -->|"require"| food
+  birds -->|"reproduce"| sexually
+  birds -->|"are"| endotherms
+  birds -->|"have"| feathers
+  birds -->|"have"| hollow_bones
+  birds -->|"have"| beaks
+  birds -->|"have"| rapid_digestive
+  feathers -->|"offer"| insulation
+  hollow_bones -->|"provide for"| light_body
+  rapid_digestive -->|"is necessary due to"| metabolism
+  metabolism -->|"provides"| energy
+  food -->|"for"| energy
+  heat -->|"from"| food
+  warm_blooded -->|"produce"| heat
+  endotherms -->|"means"| warm_blooded
+  warm_blooded -->|"maintain"| temperature
+  energy -->|"much is required to"| fly
+  light_body -.->|"help to"| fly
+  birds -.->|"some do"| fly
+  metabolism -.->|"provides"| food

@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Concept Maps</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f8f7f2;
+      --ink: #23211d;
+      --muted: #6f6a5f;
+      --line: #4e4a43;
+      --concept-fill: #fffef9;
+      --concept-border: #2f2b25;
+      --phrase-fill: #f8f7f2;
+      --phrase-border: #aaa294;
+      --cross: #9f4c2f;
+      --panel: #ffffff;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Georgia, "Times New Roman", serif;
+    }
+    header {
+      padding: 18px 22px 12px;
+      border-bottom: 1px solid #d7d1c4;
+      background: #fffdf7;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+    h1 {
+      font-size: 22px;
+      line-height: 1.15;
+      margin: 0 0 6px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+    .focus {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+      max-width: 86ch;
+    }
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    button {
+      border: 1px solid #b9b1a3;
+      background: #fffaf0;
+      color: var(--ink);
+      padding: 7px 10px;
+      border-radius: 4px;
+      font: 13px ui-sans-serif, system-ui, sans-serif;
+      cursor: pointer;
+    }
+    button:hover { background: #f0eadc; }
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      min-height: calc(100vh - 96px);
+    }
+    .stage {
+      overflow: auto;
+      border-right: 1px solid #d7d1c4;
+      background:
+        linear-gradient(rgba(40, 36, 30, .035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(40, 36, 30, .035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 24px 24px;
+    }
+    .canvas-wrap {
+      transform-origin: top left;
+      width: 1700px;
+      height: 1206px;
+      padding: 0;
+    }
+    .canvas {
+      position: relative;
+      width: 1700px;
+      height: 1206px;
+    }
+    svg.links {
+      position: absolute;
+      inset: 0;
+      width: 1700px;
+      height: 1206px;
+      pointer-events: none;
+      overflow: visible;
+    }
+    .connector {
+      stroke: var(--line);
+      stroke-width: 1.45;
+      vector-effect: non-scaling-stroke;
+    }
+    .connector.cross {
+      stroke: var(--cross);
+      stroke-dasharray: 6 5;
+    }
+    .node {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      white-space: pre-line;
+      line-height: 1.12;
+      padding: 5px 9px;
+      z-index: 2;
+      letter-spacing: 0;
+    }
+    .concept {
+      background: var(--concept-fill);
+      border: 1.5px solid var(--concept-border);
+      border-radius: 10px;
+      box-shadow: 0 1px 0 rgba(35, 33, 29, .18);
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .phrase {
+      background: var(--phrase-fill);
+      border: 1px solid var(--phrase-border);
+      border-radius: 3px;
+      font-size: 12px;
+      font-style: italic;
+      color: #35312b;
+    }
+    .phrase.cross {
+      border-color: #b36a4c;
+      color: #77341e;
+      background: #fff8f3;
+    }
+    body.theme-cmap-yellow {
+      --paper: #fbfbfb;
+      --concept-fill: #ece66b;
+      --concept-border: #ece66b;
+      --phrase-fill: rgba(255, 255, 255, .82);
+      --phrase-border: transparent;
+      --line: #333333;
+      --cross: #8a452c;
+    }
+    body.theme-cmap-yellow .concept {
+      border-radius: 7px;
+      border-color: var(--concept-border);
+      box-shadow: 5px 5px 0 #8d902f;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    body.theme-cmap-yellow .phrase {
+      border-color: transparent;
+      background: rgba(255, 255, 255, .72);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11px;
+      font-style: normal;
+    }
+    body.theme-cmap-blue {
+      --paper: #ffffff;
+      --concept-fill: #ffffff;
+      --concept-border: #18179a;
+      --phrase-fill: rgba(255, 255, 255, .82);
+      --phrase-border: transparent;
+      --line: #111111;
+      --cross: #111111;
+    }
+    body.theme-cmap-blue .concept {
+      border-radius: 0;
+      border: 2px solid var(--concept-border);
+      box-shadow: none;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+    }
+    body.theme-cmap-blue .phrase {
+      border-color: transparent;
+      background: rgba(255, 255, 255, .72);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 18px;
+      font-style: normal;
+      font-weight: 800;
+    }
+    aside {
+      background: #fffdf7;
+      overflow: auto;
+      padding: 16px;
+    }
+    body.details-hidden main {
+      grid-template-columns: 1fr;
+    }
+    body.details-hidden aside {
+      display: none;
+    }
+    .panel {
+      border-top: 1px solid #d7d1c4;
+      padding-top: 14px;
+      margin-top: 14px;
+    }
+    .panel:first-child {
+      border-top: 0;
+      margin-top: 0;
+      padding-top: 0;
+    }
+    h2 {
+      font: 700 14px ui-sans-serif, system-ui, sans-serif;
+      margin: 0 0 10px;
+      letter-spacing: 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font: 12px ui-sans-serif, system-ui, sans-serif;
+    }
+    th, td {
+      border-bottom: 1px solid #e3ded3;
+      padding: 7px 5px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { color: var(--muted); font-weight: 700; }
+    ul, ol {
+      padding-left: 20px;
+      margin: 0;
+      font: 13px ui-sans-serif, system-ui, sans-serif;
+      line-height: 1.45;
+    }
+    li + li { margin-top: 7px; }
+    details {
+      margin-top: 6px;
+      color: var(--muted);
+    }
+    summary { cursor: pointer; }
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; }
+      .stage { min-height: 62vh; border-right: 0; border-bottom: 1px solid #d7d1c4; }
+      aside { max-height: none; }
+    }
+  </style>
+</head>
+<body class="theme-cmap-blue">
+  <header>
+    <h1>Concept Maps</h1>
+    <p class="focus"><strong>Focus question:</strong> What are the key features of concept maps?</p>
+    <div class="toolbar" aria-label="Map controls">
+      <button type="button" data-zoom="in">Zoom In</button>
+      <button type="button" data-zoom="out">Zoom Out</button>
+      <button type="button" data-zoom="reset">Reset</button>
+      <button type="button" data-toggle-details>Hide Details</button>
+    </div>
+  </header>
+  <main>
+    <section class="stage" aria-label="Concept map canvas">
+      <div class="canvas-wrap" id="canvasWrap">
+        <div class="canvas">
+          <svg class="links" viewBox="0 0 1700 1206" role="img" aria-label="Concept map links">
+            <defs>
+              <marker id="arrow" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L9,4 L0,8 z" fill="var(--line)"></path>
+              </marker>
+            </defs>
+            <line class="connector" x1="875.0" y1="66.0" x2="874.0" y2="147.0" /><line class="connector" x1="874.0" y1="147.0" x2="877.5" y2="238.0" marker-end="url(#arrow)" /><line class="connector" x1="875.0" y1="66.0" x2="1094.0" y2="102.0" /><line class="connector" x1="1094.0" y1="102.0" x2="1315.0" y2="188.0" marker-end="url(#arrow)" /><line class="connector" x1="877.5" y1="238.0" x2="1110.0" y2="237.0" /><line class="connector" x1="1110.0" y1="237.0" x2="1315.0" y2="188.0" marker-end="url(#arrow)" /><line class="connector" x1="877.5" y1="238.0" x2="651.0" y2="257.0" /><line class="connector" x1="651.0" y1="257.0" x2="395.0" y2="253.0" marker-end="url(#arrow)" /><line class="connector" x1="395.0" y1="253.0" x2="371.0" y2="347.0" /><line class="connector" x1="371.0" y1="347.0" x2="400.0" y2="436.0" marker-end="url(#arrow)" /><line class="connector" x1="877.5" y1="238.0" x2="692.0" y2="337.0" /><line class="connector" x1="692.0" y1="337.0" x2="400.0" y2="436.0" marker-end="url(#arrow)" /><line class="connector" x1="877.5" y1="238.0" x2="787.0" y2="357.0" /><line class="connector" x1="787.0" y1="357.0" x2="935.0" y2="451.0" marker-end="url(#arrow)" /><line class="connector" x1="400.0" y1="436.0" x2="542.0" y2="442.0" /><line class="connector" x1="542.0" y1="442.0" x2="655.0" y2="428.0" marker-end="url(#arrow)" /><line class="connector" x1="655.0" y1="428.0" x2="788.0" y2="437.0" /><line class="connector" x1="788.0" y1="437.0" x2="935.0" y2="451.0" marker-end="url(#arrow)" /><line class="connector" x1="400.0" y1="436.0" x2="316.0" y2="527.0" /><line class="connector" x1="316.0" y1="527.0" x2="200.0" y2="622.5" marker-end="url(#arrow)" /><line class="connector" x1="400.0" y1="436.0" x2="511.0" y2="562.0" /><line class="connector" x1="511.0" y1="562.0" x2="495.0" y2="649.0" marker-end="url(#arrow)" /><line class="connector" x1="400.0" y1="436.0" x2="646.0" y2="557.0" /><line class="connector" x1="646.0" y1="557.0" x2="677.5" y2="663.0" marker-end="url(#arrow)" /><line class="connector" x1="935.0" y1="451.0" x2="961.0" y2="537.0" /><line class="connector" x1="961.0" y1="537.0" x2="950.0" y2="623.0" marker-end="url(#arrow)" /><line class="connector" x1="935.0" y1="451.0" x2="1081.0" y2="557.0" /><line class="connector" x1="1081.0" y1="557.0" x2="1137.5" y2="649.0" marker-end="url(#arrow)" /><line class="connector" x1="877.5" y1="238.0" x2="1096.0" y2="342.0" /><line class="connector" x1="1096.0" y1="342.0" x2="1427.5" y2="368.0" marker-end="url(#arrow)" /><line class="connector" x1="1315.0" y1="188.0" x2="1371.0" y2="277.0" /><line class="connector" x1="1371.0" y1="277.0" x2="1427.5" y2="368.0" marker-end="url(#arrow)" /><line class="connector" x1="877.5" y1="238.0" x2="1131.0" y2="407.0" /><line class="connector" x1="1131.0" y1="407.0" x2="1290.0" y2="468.0" marker-end="url(#arrow)" /><line class="connector" x1="877.5" y1="238.0" x2="1096.0" y2="472.0" /><line class="connector" x1="1096.0" y1="472.0" x2="1287.5" y2="598.0" marker-end="url(#arrow)" /><line class="connector" x1="1427.5" y1="368.0" x2="1451.0" y2="497.0" /><line class="connector" x1="1451.0" y1="497.0" x2="1517.5" y2="554.0" marker-end="url(#arrow)" /><line class="connector" x1="1427.5" y1="368.0" x2="1401.0" y2="562.0" /><line class="connector" x1="1401.0" y1="562.0" x2="1437.5" y2="664.0" marker-end="url(#arrow)" /><line class="connector" x1="200.0" y1="622.5" x2="186.0" y2="747.0" /><line class="connector" x1="186.0" y1="747.0" x2="95.0" y2="858.0" marker-end="url(#arrow)" /><line class="connector" x1="200.0" y1="622.5" x2="271.0" y2="747.0" /><line class="connector" x1="271.0" y1="747.0" x2="305.0" y2="858.0" marker-end="url(#arrow)" /><line class="connector" x1="495.0" y1="649.0" x2="491.0" y2="757.0" /><line class="connector" x1="491.0" y1="757.0" x2="472.5" y2="814.0" marker-end="url(#arrow)" /><line class="connector" x1="495.0" y1="649.0" x2="581.0" y2="757.0" /><line class="connector" x1="581.0" y1="757.0" x2="610.0" y2="814.0" marker-end="url(#arrow)" /><line class="connector" x1="950.0" y1="623.0" x2="949.0" y2="727.0" /><line class="connector" x1="949.0" y1="727.0" x2="962.5" y2="798.0" marker-end="url(#arrow)" /><line class="connector" x1="677.5" y1="663.0" x2="686.0" y2="777.0" /><line class="connector" x1="686.0" y1="777.0" x2="685.0" y2="859.0" marker-end="url(#arrow)" /><line class="connector" x1="677.5" y1="663.0" x2="797.0" y2="807.0" /><line class="connector" x1="797.0" y1="807.0" x2="867.5" y2="924.0" marker-end="url(#arrow)" /><line class="connector" x1="677.5" y1="663.0" x2="821.0" y2="732.0" /><line class="connector" x1="821.0" y1="732.0" x2="962.5" y2="798.0" marker-end="url(#arrow)" /><line class="connector cross" x1="685.0" y1="859.0" x2="565.0" y2="987.0" /><line class="connector cross" x1="565.0" y1="987.0" x2="422.5" y2="1019.0" marker-end="url(#arrow)" /><line class="connector" x1="200.0" y1="622.5" x2="352.0" y2="807.0" /><line class="connector" x1="352.0" y1="807.0" x2="422.5" y2="1019.0" marker-end="url(#arrow)" /><line class="connector cross" x1="685.0" y1="859.0" x2="886.0" y2="1002.0" /><line class="connector cross" x1="886.0" y1="1002.0" x2="1217.5" y2="866.0" marker-end="url(#arrow)" /><line class="connector" x1="1137.5" y1="649.0" x2="1186.0" y2="762.0" /><line class="connector" x1="1186.0" y1="762.0" x2="1217.5" y2="866.0" marker-end="url(#arrow)" /><line class="connector" x1="1217.5" y1="866.0" x2="1223.0" y2="947.0" /><line class="connector" x1="1223.0" y1="947.0" x2="1227.5" y2="1048.0" marker-end="url(#arrow)" />
+          </svg>
+          <div class="node concept" id="n-concept_maps" style="left:760.0px;top:40.0px;width:230px;height:52px">Concept Maps</div><div class="node concept" id="n-organized_knowledge" style="left:790.0px;top:200.0px;width:175px;height:76px">Organized
+Knowledge</div><div class="node concept" id="n-focus_questions" style="left:1220.0px;top:150.0px;width:190px;height:76px">&quot;Focus
+Question(s)&quot;</div><div class="node concept" id="n-affect" style="left:280.0px;top:215.0px;width:230px;height:76px">Associated
+Feelings or Affect</div><div class="node concept" id="n-concepts" style="left:325.0px;top:410.0px;width:150px;height:52px">Concepts</div><div class="node concept" id="n-linking_words" style="left:590.0px;top:390.0px;width:130px;height:76px">Linking
+Words</div><div class="node concept" id="n-propositions" style="left:840.0px;top:425.0px;width:190px;height:52px">Propositions</div><div class="node concept" id="n-context" style="left:1340.0px;top:330.0px;width:175px;height:76px">Context
+Dependent</div><div class="node concept" id="n-effective_teaching" style="left:1210.0px;top:430.0px;width:160px;height:76px">Effective
+Teaching</div><div class="node concept" id="n-effective_learning" style="left:1200.0px;top:560.0px;width:175px;height:76px">Effective
+Learning</div><div class="node concept" id="n-perceived" style="left:110.0px;top:575.0px;width:180px;height:95px">Perceived
+Regularities
+or Patterns</div><div class="node concept" id="n-labeled" style="left:435.0px;top:625.0px;width:120px;height:48px">Labeled</div><div class="node concept" id="n-hierarchy" style="left:575.0px;top:625.0px;width:205px;height:76px">Hierarchically
+Structured</div><div class="node concept" id="n-units" style="left:870.0px;top:585.0px;width:160px;height:76px">Units
+of Meaning</div><div class="node concept" id="n-crosslinks" style="left:1065.0px;top:625.0px;width:145px;height:48px">Crosslinks</div><div class="node concept" id="n-personal" style="left:1455.0px;top:530.0px;width:125px;height:48px">Personal</div><div class="node concept" id="n-social" style="left:1385.0px;top:640.0px;width:105px;height:48px">Social</div><div class="node concept" id="n-events" style="left:0.0px;top:820.0px;width:190px;height:76px">Events
+(Happenings)</div><div class="node concept" id="n-objects" style="left:230.0px;top:820.0px;width:150px;height:76px">Objects
+(Things)</div><div class="node concept" id="n-symbols" style="left:410.0px;top:790.0px;width:125px;height:48px">Symbols</div><div class="node concept" id="n-words" style="left:555.0px;top:790.0px;width:110px;height:48px">Words</div><div class="node concept" id="n-cognitive_structure" style="left:885.0px;top:760.0px;width:155px;height:76px">Cognitive
+Structure</div><div class="node concept" id="n-interrelationships" style="left:1095.0px;top:840.0px;width:245px;height:52px">Interrelationships</div><div class="node concept" id="n-creativity" style="left:610.0px;top:835.0px;width:150px;height:48px">Creativity</div><div class="node concept" id="n-experts" style="left:805.0px;top:900.0px;width:125px;height:48px">Experts</div><div class="node concept" id="n-infants" style="left:360.0px;top:995.0px;width:125px;height:48px">Infants</div><div class="node concept" id="n-different_segments" style="left:1125.0px;top:1010.0px;width:205px;height:76px">Different
+Map Segments</div><div class="node phrase" id="n-lp_P1" style="left:830.0px;top:130.0px;width:88px;height:34px">represent</div><div class="node phrase" id="n-lp_P2" style="left:1035.0px;top:85.0px;width:118px;height:34px">help to answer</div><div class="node phrase" id="n-lp_P3" style="left:1045.0px;top:220.0px;width:130px;height:34px">needed to answer</div><div class="node phrase" id="n-lp_P4" style="left:610.0px;top:240.0px;width:82px;height:34px">includes</div><div class="node phrase" id="n-lp_P5" style="left:335.0px;top:330.0px;width:72px;height:34px">add to</div><div class="node phrase" id="n-lp_P6" style="left:630.0px;top:320.0px;width:124px;height:34px">is comprised of</div><div class="node phrase" id="n-lp_P7" style="left:725.0px;top:340.0px;width:124px;height:34px">is comprised of</div><div class="node phrase" id="n-lp_P8" style="left:480.0px;top:425.0px;width:124px;height:34px">connected using</div><div class="node phrase" id="n-lp_P9" style="left:735.0px;top:420.0px;width:106px;height:34px">used to form</div><div class="node phrase" id="n-lp_P10" style="left:280.0px;top:510.0px;width:72px;height:34px">are</div><div class="node phrase" id="n-lp_P11" style="left:475.0px;top:545.0px;width:72px;height:34px">are</div><div class="node phrase" id="n-lp_P12" style="left:610.0px;top:540.0px;width:72px;height:34px">are</div><div class="node phrase" id="n-lp_P13" style="left:925.0px;top:520.0px;width:72px;height:34px">are</div><div class="node phrase" id="n-lp_P14" style="left:1045.0px;top:540.0px;width:72px;height:34px">may be</div><div class="node phrase" id="n-lp_P15" style="left:1060.0px;top:325.0px;width:72px;height:34px">is</div><div class="node phrase" id="n-lp_P16" style="left:1335.0px;top:260.0px;width:72px;height:34px">are</div><div class="node phrase" id="n-lp_P17" style="left:1075.0px;top:390.0px;width:112px;height:34px">necessary for</div><div class="node phrase" id="n-lp_P18" style="left:1040.0px;top:455.0px;width:112px;height:34px">necessary for</div><div class="node phrase" id="n-lp_P19" style="left:1415.0px;top:480.0px;width:72px;height:34px">e.g.</div><div class="node phrase" id="n-lp_P20" style="left:1365.0px;top:545.0px;width:72px;height:34px">e.g.</div><div class="node phrase" id="n-lp_P21" style="left:150.0px;top:730.0px;width:72px;height:34px">in</div><div class="node phrase" id="n-lp_P22" style="left:235.0px;top:730.0px;width:72px;height:34px">in</div><div class="node phrase" id="n-lp_P23" style="left:455.0px;top:740.0px;width:72px;height:34px">with</div><div class="node phrase" id="n-lp_P24" style="left:545.0px;top:740.0px;width:72px;height:34px">with</div><div class="node phrase" id="n-lp_P25" style="left:890.0px;top:710.0px;width:118px;height:34px">constructed in</div><div class="node phrase" id="n-lp_P26" style="left:650.0px;top:760.0px;width:72px;height:34px">aids</div><div class="node phrase" id="n-lp_P27" style="left:735.0px;top:790.0px;width:124px;height:34px">especially with</div><div class="node phrase" id="n-lp_P28" style="left:785.0px;top:715.0px;width:72px;height:34px">in</div><div class="node phrase cross" id="n-lp_P29" style="left:515.0px;top:970.0px;width:100px;height:34px">begins with</div><div class="node phrase" id="n-lp_P30" style="left:305.0px;top:790.0px;width:94px;height:34px">begin with</div><div class="node phrase cross" id="n-lp_P31" style="left:830.0px;top:985.0px;width:112px;height:34px">needed to see</div><div class="node phrase" id="n-lp_P32" style="left:1150.0px;top:745.0px;width:72px;height:34px">show</div><div class="node phrase" id="n-lp_P33" style="left:1185.0px;top:930.0px;width:76px;height:34px">between</div>
+        </div>
+      </div>
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Propositions</h2>
+        <table>
+          <thead><tr><th>ID</th><th>Proposition</th><th>Type</th></tr></thead>
+          <tbody><tr><td>P1</td><td>Concept Maps represent Organized
+Knowledge</td><td>hierarchy</td></tr><tr><td>P2</td><td>Concept Maps help to answer &quot;Focus
+Question(s)&quot;</td><td>hierarchy</td></tr><tr><td>P3</td><td>Organized
+Knowledge needed to answer &quot;Focus
+Question(s)&quot;</td><td>hierarchy</td></tr><tr><td>P4</td><td>Organized
+Knowledge includes Associated
+Feelings or Affect</td><td>hierarchy</td></tr><tr><td>P5</td><td>Associated
+Feelings or Affect add to Concepts</td><td>hierarchy</td></tr><tr><td>P6</td><td>Organized
+Knowledge is comprised of Concepts</td><td>hierarchy</td></tr><tr><td>P7</td><td>Organized
+Knowledge is comprised of Propositions</td><td>hierarchy</td></tr><tr><td>P8</td><td>Concepts connected using Linking
+Words</td><td>hierarchy</td></tr><tr><td>P9</td><td>Linking
+Words used to form Propositions</td><td>hierarchy</td></tr><tr><td>P10</td><td>Concepts are Perceived
+Regularities
+or Patterns</td><td>hierarchy</td></tr><tr><td>P11</td><td>Concepts are Labeled</td><td>hierarchy</td></tr><tr><td>P12</td><td>Concepts are Hierarchically
+Structured</td><td>hierarchy</td></tr><tr><td>P13</td><td>Propositions are Units
+of Meaning</td><td>hierarchy</td></tr><tr><td>P14</td><td>Propositions may be Crosslinks</td><td>hierarchy</td></tr><tr><td>P15</td><td>Organized
+Knowledge is Context
+Dependent</td><td>hierarchy</td></tr><tr><td>P16</td><td>&quot;Focus
+Question(s)&quot; are Context
+Dependent</td><td>hierarchy</td></tr><tr><td>P17</td><td>Organized
+Knowledge necessary for Effective
+Teaching</td><td>hierarchy</td></tr><tr><td>P18</td><td>Organized
+Knowledge necessary for Effective
+Learning</td><td>hierarchy</td></tr><tr><td>P19</td><td>Context
+Dependent e.g. Personal</td><td>hierarchy</td></tr><tr><td>P20</td><td>Context
+Dependent e.g. Social</td><td>hierarchy</td></tr><tr><td>P21</td><td>Perceived
+Regularities
+or Patterns in Events
+(Happenings)</td><td>hierarchy</td></tr><tr><td>P22</td><td>Perceived
+Regularities
+or Patterns in Objects
+(Things)</td><td>hierarchy</td></tr><tr><td>P23</td><td>Labeled with Symbols</td><td>hierarchy</td></tr><tr><td>P24</td><td>Labeled with Words</td><td>hierarchy</td></tr><tr><td>P25</td><td>Units
+of Meaning constructed in Cognitive
+Structure</td><td>hierarchy</td></tr><tr><td>P26</td><td>Hierarchically
+Structured aids Creativity</td><td>hierarchy</td></tr><tr><td>P27</td><td>Hierarchically
+Structured especially with Experts</td><td>hierarchy</td></tr><tr><td>P28</td><td>Hierarchically
+Structured in Cognitive
+Structure</td><td>hierarchy</td></tr><tr><td>P29</td><td>Creativity begins with Infants</td><td>cross-link</td></tr><tr><td>P30</td><td>Perceived
+Regularities
+or Patterns begin with Infants</td><td>hierarchy</td></tr><tr><td>P31</td><td>Creativity needed to see Interrelationships</td><td>cross-link</td></tr><tr><td>P32</td><td>Crosslinks show Interrelationships</td><td>hierarchy</td></tr><tr><td>P33</td><td>Interrelationships between Different
+Map Segments</td><td>hierarchy</td></tr></tbody>
+        </table>
+      </section>
+      <section class="panel">
+        <h2>Parking Lot</h2>
+        <ul><li>Concept Maps</li><li>Organized Knowledge</li><li>Focus Questions</li><li>Concepts</li><li>Linking Words</li><li>Propositions</li><li>Crosslinks</li><li>Interrelationships</li><li>Creativity</li></ul>
+      </section>
+      
+      <section class="panel">
+        <h2>Learning Checks</h2>
+        <ol><li><p>Concept Maps -&gt; ________ -&gt; Organized Knowledge</p><details><summary>Answer</summary><p>represent</p></details></li><li><p>Faulty: Concept Maps -&gt; are decorative diagrams for -&gt; Organized Knowledge</p><details><summary>Answer</summary><p>Concept Maps -&gt; represent -&gt; Organized Knowledge</p></details></li></ol>
+      </section>
+    </aside>
+  </main>
+  <script>
+    const wrap = document.getElementById('canvasWrap');
+    const canvasWidth = 1700;
+    const canvasHeight = 1206;
+    let scale = 1;
+    function applyScale() {
+      wrap.style.transform = `scale(${scale})`;
+      wrap.style.marginRight = `${canvasWidth * (scale - 1)}px`;
+      wrap.style.marginBottom = `${canvasHeight * (scale - 1)}px`;
+    }
+    document.querySelectorAll('[data-zoom]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const action = button.dataset.zoom;
+        if (action === 'in') scale = Math.min(1.8, scale + 0.15);
+        if (action === 'out') scale = Math.max(0.55, scale - 0.15);
+        if (action === 'reset') scale = 1;
+        applyScale();
+      });
+    });
+    const detailsButton = document.querySelector('[data-toggle-details]');
+    if (new URLSearchParams(window.location.search).get('details') === 'hidden') {
+      document.body.classList.add('details-hidden');
+      detailsButton.textContent = 'Show Details';
+    }
+    detailsButton.addEventListener('click', () => {
+      document.body.classList.toggle('details-hidden');
+      detailsButton.textContent = document.body.classList.contains('details-hidden') ? 'Show Details' : 'Hide Details';
+    });
+  </script>
+</body>
+</html>

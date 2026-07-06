@@ -1,0 +1,45 @@
+{
+  "skill_name": "novak-concept-maps",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Make me a Novak-style concept map for photosynthesis that I can use to study. Include fill-in-the-linking-phrase questions and an answer key.",
+      "expected_output": "A focus-question-driven concept map with concise concept labels, labeled propositions, a standalone HTML artifact or HTML-ready JSON source, a proposition table, and learning exercises."
+    },
+    {
+      "id": 2,
+      "prompt": "I keep mixing up reinforcement learning terms. Build a small cmap where I have to choose between the missing concept and the missing link.",
+      "expected_output": "A small Novak-style learning map with choice exercises that target concepts and linking phrases rather than generic flashcards."
+    },
+    {
+      "id": 3,
+      "prompt": "Given this bad proposition, 'Concept maps are mind maps', help me repair the misconception and show a tiny map explaining the difference.",
+      "expected_output": "A diagnostic response that identifies the faulty relationship, repairs it as propositions, and shows a compact concept map, preferably as HTML when saved."
+    },
+    {
+      "id": 4,
+      "prompt": "I need to interview a senior incident responder before they leave the company. Use concept mapping as a CTA method: give me a focus question, facilitator prompts, a parking lot starter, and the structure for the first map.",
+      "expected_output": "A knowledge-elicitation response grounded in Working Minds: bounded focus question, interview facilitation guidance, parking lot, proposition-first map structure, and refinement checks."
+    },
+    {
+      "id": 5,
+      "prompt": "I made a rough learner cmap about meaningful learning, and I also have an expert cmap. Compare them and turn the differences into assessment tasks. I want to know what I misunderstand, not just get a nicer diagram.",
+      "expected_output": "An assessment-mode response that compares learner and reference maps by propositions, identifies shared/missing/weak relations, and creates targeted MCCM, SAFI, repair, and reflection tasks with a scoring rubric."
+    },
+    {
+      "id": 6,
+      "prompt": "Build a pre/post concept-map check for my team after a training session on incident response triage. Include how Codex should judge whether the later map shows better understanding.",
+      "expected_output": "A pre/post assessment workflow with a stable focus question, proposition-level comparison criteria, scoring guidance, and prompts for learner reflection about changed concepts, links, hierarchy, and cross-links."
+    },
+    {
+      "id": 7,
+      "prompt": "Make me a Multiple Choice Concept Map item and a Select-And-Fill-In item for distinguishing concept maps from mind maps. Orient me first because I have never used map-based assessment before.",
+      "expected_output": "A learner-oriented assessment response that explains how to read the concept-map item, then provides MCCM and SAFI tasks with close distractors, answer keys, rationales, and an explicit local rubric."
+    },
+    {
+      "id": 8,
+      "prompt": "Generate a concept map from these notes and make it a nice side-panel artifact. The notes cover tokenization, next-token prediction, chat masks, and special tokens.",
+      "expected_output": "A checkpoint response that proposes several meaningfully different focus questions and asks the user to choose or edit one before creating the full saved artifact."
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+flowchart TB
+  meaningful_learning["Meaningful Learning"]
+  learner["Learner"]
+  new_knowledge["New Knowledge"]
+  prior_knowledge["Prior Knowledge"]
+  concept_maps["Concept Maps"]
+  concepts["Concepts"]
+  focus_question["Focus Question"]
+  propositions["Propositions"]
+  linking_phrases["Linking Phrases"]
+  misconceptions["Misconceptions"]
+  meaningful_learning -->|"requires"| prior_knowledge
+  learner -->|"chooses to integrate"| new_knowledge
+  new_knowledge -->|"is connected with"| prior_knowledge
+  concepts -->|"combine into"| propositions
+  linking_phrases -->|"make explicit"| propositions
+  concept_maps -->|"represent"| propositions
+  focus_question -->|"sets context for"| concept_maps
+  concept_maps -.->|"can reveal"| misconceptions
+  misconceptions -.->|"may be faulty"| propositions

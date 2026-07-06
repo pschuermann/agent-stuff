@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>What Are Birds</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f8f7f2;
+      --ink: #23211d;
+      --muted: #6f6a5f;
+      --line: #4e4a43;
+      --concept-fill: #fffef9;
+      --concept-border: #2f2b25;
+      --phrase-fill: #f8f7f2;
+      --phrase-border: #aaa294;
+      --cross: #9f4c2f;
+      --panel: #ffffff;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Georgia, "Times New Roman", serif;
+    }
+    header {
+      padding: 18px 22px 12px;
+      border-bottom: 1px solid #d7d1c4;
+      background: #fffdf7;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+    h1 {
+      font-size: 22px;
+      line-height: 1.15;
+      margin: 0 0 6px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+    .focus {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+      max-width: 86ch;
+    }
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    button {
+      border: 1px solid #b9b1a3;
+      background: #fffaf0;
+      color: var(--ink);
+      padding: 7px 10px;
+      border-radius: 4px;
+      font: 13px ui-sans-serif, system-ui, sans-serif;
+      cursor: pointer;
+    }
+    button:hover { background: #f0eadc; }
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      min-height: calc(100vh - 96px);
+    }
+    .stage {
+      overflow: auto;
+      border-right: 1px solid #d7d1c4;
+      background:
+        linear-gradient(rgba(40, 36, 30, .035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(40, 36, 30, .035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 24px 24px;
+    }
+    .canvas-wrap {
+      transform-origin: top left;
+      width: 1151px;
+      height: 808px;
+      padding: 0;
+    }
+    .canvas {
+      position: relative;
+      width: 1151px;
+      height: 808px;
+    }
+    svg.links {
+      position: absolute;
+      inset: 0;
+      width: 1151px;
+      height: 808px;
+      pointer-events: none;
+      overflow: visible;
+    }
+    .connector {
+      stroke: var(--line);
+      stroke-width: 1.45;
+      vector-effect: non-scaling-stroke;
+    }
+    .connector.cross {
+      stroke: var(--cross);
+      stroke-dasharray: 6 5;
+    }
+    .node {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      white-space: pre-line;
+      line-height: 1.12;
+      padding: 5px 9px;
+      z-index: 2;
+      letter-spacing: 0;
+    }
+    .concept {
+      background: var(--concept-fill);
+      border: 1.5px solid var(--concept-border);
+      border-radius: 10px;
+      box-shadow: 0 1px 0 rgba(35, 33, 29, .18);
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .phrase {
+      background: var(--phrase-fill);
+      border: 1px solid var(--phrase-border);
+      border-radius: 3px;
+      font-size: 12px;
+      font-style: italic;
+      color: #35312b;
+    }
+    .phrase.cross {
+      border-color: #b36a4c;
+      color: #77341e;
+      background: #fff8f3;
+    }
+    body.theme-cmap-yellow {
+      --paper: #fbfbfb;
+      --concept-fill: #ece66b;
+      --concept-border: #ece66b;
+      --phrase-fill: rgba(255, 255, 255, .82);
+      --phrase-border: transparent;
+      --line: #333333;
+      --cross: #8a452c;
+    }
+    body.theme-cmap-yellow .concept {
+      border-radius: 7px;
+      border-color: var(--concept-border);
+      box-shadow: 5px 5px 0 #8d902f;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    body.theme-cmap-yellow .phrase {
+      border-color: transparent;
+      background: rgba(255, 255, 255, .72);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11px;
+      font-style: normal;
+    }
+    body.theme-cmap-blue {
+      --paper: #ffffff;
+      --concept-fill: #ffffff;
+      --concept-border: #18179a;
+      --phrase-fill: rgba(255, 255, 255, .82);
+      --phrase-border: transparent;
+      --line: #111111;
+      --cross: #111111;
+    }
+    body.theme-cmap-blue .concept {
+      border-radius: 0;
+      border: 2px solid var(--concept-border);
+      box-shadow: none;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+    }
+    body.theme-cmap-blue .phrase {
+      border-color: transparent;
+      background: rgba(255, 255, 255, .72);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 18px;
+      font-style: normal;
+      font-weight: 800;
+    }
+    aside {
+      background: #fffdf7;
+      overflow: auto;
+      padding: 16px;
+    }
+    body.details-hidden main {
+      grid-template-columns: 1fr;
+    }
+    body.details-hidden aside {
+      display: none;
+    }
+    .panel {
+      border-top: 1px solid #d7d1c4;
+      padding-top: 14px;
+      margin-top: 14px;
+    }
+    .panel:first-child {
+      border-top: 0;
+      margin-top: 0;
+      padding-top: 0;
+    }
+    h2 {
+      font: 700 14px ui-sans-serif, system-ui, sans-serif;
+      margin: 0 0 10px;
+      letter-spacing: 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font: 12px ui-sans-serif, system-ui, sans-serif;
+    }
+    th, td {
+      border-bottom: 1px solid #e3ded3;
+      padding: 7px 5px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { color: var(--muted); font-weight: 700; }
+    ul, ol {
+      padding-left: 20px;
+      margin: 0;
+      font: 13px ui-sans-serif, system-ui, sans-serif;
+      line-height: 1.45;
+    }
+    li + li { margin-top: 7px; }
+    details {
+      margin-top: 6px;
+      color: var(--muted);
+    }
+    summary { cursor: pointer; }
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; }
+      .stage { min-height: 62vh; border-right: 0; border-bottom: 1px solid #d7d1c4; }
+      aside { max-height: none; }
+    }
+  </style>
+</head>
+<body class="theme-cmap-yellow">
+  <header>
+    <h1>What Are Birds</h1>
+    <p class="focus"><strong>Focus question:</strong> What are birds?</p>
+    <div class="toolbar" aria-label="Map controls">
+      <button type="button" data-zoom="in">Zoom In</button>
+      <button type="button" data-zoom="out">Zoom Out</button>
+      <button type="button" data-zoom="reset">Reset</button>
+      <button type="button" data-toggle-details>Hide Details</button>
+    </div>
+  </header>
+  <main>
+    <section class="stage" aria-label="Concept map canvas">
+      <div class="canvas-wrap" id="canvasWrap">
+        <div class="canvas">
+          <svg class="links" viewBox="0 0 1151 808" role="img" aria-label="Concept map links">
+            <defs>
+              <marker id="arrow" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L9,4 L0,8 z" fill="var(--line)"></path>
+              </marker>
+            </defs>
+            <line class="connector" x1="500.0" y1="56.0" x2="256.0" y2="177.0" /><line class="connector" x1="256.0" y1="177.0" x2="87.5" y2="194.0" marker-end="url(#arrow)" /><line class="connector" x1="500.0" y1="56.0" x2="426.0" y2="117.0" /><line class="connector" x1="426.0" y1="117.0" x2="410.0" y2="164.0" marker-end="url(#arrow)" /><line class="connector" x1="500.0" y1="56.0" x2="506.0" y2="142.0" /><line class="connector" x1="506.0" y1="142.0" x2="507.5" y2="216.0" marker-end="url(#arrow)" /><line class="connector" x1="500.0" y1="56.0" x2="583.0" y2="207.0" /><line class="connector" x1="583.0" y1="207.0" x2="600.0" y2="294.0" marker-end="url(#arrow)" /><line class="connector" x1="500.0" y1="56.0" x2="659.0" y2="152.0" /><line class="connector" x1="659.0" y1="152.0" x2="687.5" y2="224.0" marker-end="url(#arrow)" /><line class="connector" x1="500.0" y1="56.0" x2="711.0" y2="122.0" /><line class="connector" x1="711.0" y1="122.0" x2="797.5" y2="179.0" marker-end="url(#arrow)" /><line class="connector" x1="500.0" y1="56.0" x2="211.0" y2="237.0" /><line class="connector" x1="211.0" y1="237.0" x2="107.5" y2="269.0" marker-end="url(#arrow)" /><line class="connector" x1="500.0" y1="56.0" x2="276.0" y2="227.0" /><line class="connector" x1="276.0" y1="227.0" x2="242.5" y2="276.0" marker-end="url(#arrow)" /><line class="connector" x1="500.0" y1="56.0" x2="351.0" y2="227.0" /><line class="connector" x1="351.0" y1="227.0" x2="362.5" y2="269.0" marker-end="url(#arrow)" /><line class="connector" x1="500.0" y1="56.0" x2="411.0" y2="297.0" /><line class="connector" x1="411.0" y1="297.0" x2="347.5" y2="341.0" marker-end="url(#arrow)" /><line class="connector" x1="107.5" y1="269.0" x2="106.0" y2="327.0" /><line class="connector" x1="106.0" y1="327.0" x2="77.5" y2="379.0" marker-end="url(#arrow)" /><line class="connector" x1="242.5" y1="276.0" x2="225.0" y2="352.0" /><line class="connector" x1="225.0" y1="352.0" x2="252.5" y2="416.0" marker-end="url(#arrow)" /><line class="connector" x1="347.5" y1="341.0" x2="464.0" y2="377.0" /><line class="connector" x1="464.0" y1="377.0" x2="532.5" y2="406.0" marker-end="url(#arrow)" /><line class="connector" x1="532.5" y1="406.0" x2="596.0" y2="487.0" /><line class="connector" x1="596.0" y1="487.0" x2="667.5" y2="534.0" marker-end="url(#arrow)" /><line class="connector" x1="600.0" y1="294.0" x2="646.0" y2="437.0" /><line class="connector" x1="646.0" y1="437.0" x2="667.5" y2="534.0" marker-end="url(#arrow)" /><line class="connector" x1="782.5" y1="369.0" x2="716.0" y2="327.0" /><line class="connector" x1="716.0" y1="327.0" x2="600.0" y2="294.0" marker-end="url(#arrow)" /><line class="connector" x1="832.5" y1="286.0" x2="803.0" y2="337.0" /><line class="connector" x1="803.0" y1="337.0" x2="782.5" y2="369.0" marker-end="url(#arrow)" /><line class="connector" x1="797.5" y1="179.0" x2="836.0" y2="232.0" /><line class="connector" x1="836.0" y1="232.0" x2="832.5" y2="286.0" marker-end="url(#arrow)" /><line class="connector" x1="832.5" y1="286.0" x2="911.0" y2="367.0" /><line class="connector" x1="911.0" y1="367.0" x2="905.0" y2="436.0" marker-end="url(#arrow)" /><line class="connector" x1="667.5" y1="534.0" x2="694.0" y2="607.0" /><line class="connector" x1="694.0" y1="607.0" x2="665.0" y2="669.0" marker-end="url(#arrow)" /><line class="connector cross" x1="252.5" y1="416.0" x2="273.0" y2="577.0" /><line class="connector cross" x1="273.0" y1="577.0" x2="665.0" y2="669.0" marker-end="url(#arrow)" /><line class="connector cross" x1="500.0" y1="56.0" x2="993.0" y2="292.0" /><line class="connector cross" x1="993.0" y1="292.0" x2="665.0" y2="669.0" marker-end="url(#arrow)" /><line class="connector cross" x1="532.5" y1="406.0" x2="596.0" y2="362.0" /><line class="connector cross" x1="596.0" y1="362.0" x2="600.0" y2="294.0" marker-end="url(#arrow)" />
+          </svg>
+          <div class="node concept" id="n-focus" style="left:40.0px;top:35.0px;width:150px;height:38px">What are Birds?</div><div class="node concept" id="n-birds" style="left:455.0px;top:35.0px;width:90px;height:42px">Birds</div><div class="node concept" id="n-two_feet" style="left:35.0px;top:175.0px;width:105px;height:38px">Two Feet</div><div class="node concept" id="n-eggs" style="left:365.0px;top:145.0px;width:90px;height:38px">Eggs</div><div class="node concept" id="n-two_wings" style="left:455.0px;top:190.0px;width:105px;height:52px">Two
+Wings</div><div class="node concept" id="n-food" style="left:555.0px;top:275.0px;width:90px;height:38px">Food</div><div class="node concept" id="n-endotherms" style="left:735.0px;top:160.0px;width:125px;height:38px">Endotherms</div><div class="node concept" id="n-sexually" style="left:635.0px;top:205.0px;width:105px;height:38px">Sexually</div><div class="node concept" id="n-feathers" style="left:55.0px;top:250.0px;width:105px;height:38px">Feathers</div><div class="node concept" id="n-hollow_bones" style="left:190.0px;top:250.0px;width:105px;height:52px">Hollow
+Bones</div><div class="node concept" id="n-beaks" style="left:315.0px;top:250.0px;width:95px;height:38px">Beaks</div><div class="node concept" id="n-rapid_digestive" style="left:275.0px;top:315.0px;width:145px;height:52px">Rapid Digestive
+Systems</div><div class="node concept" id="n-warm_blooded" style="left:760.0px;top:260.0px;width:145px;height:52px">Warm-Blooded
+Animals</div><div class="node concept" id="n-insulation" style="left:20.0px;top:360.0px;width:115px;height:38px">Insulation</div><div class="node concept" id="n-light_body" style="left:190.0px;top:390.0px;width:125px;height:52px">Light body
+weights</div><div class="node concept" id="n-metabolism" style="left:470.0px;top:380.0px;width:125px;height:52px">High
+metabolism</div><div class="node concept" id="n-energy" style="left:620.0px;top:515.0px;width:95px;height:38px">Energy</div><div class="node concept" id="n-heat" style="left:735.0px;top:350.0px;width:95px;height:38px">Heat</div><div class="node concept" id="n-temperature" style="left:830.0px;top:410.0px;width:150px;height:52px">Constant Body
+Temperature</div><div class="node concept" id="n-fly" style="left:625.0px;top:650.0px;width:80px;height:38px">Fly</div><div class="node phrase" id="n-lp_P1" style="left:220.0px;top:160.0px;width:72px;height:34px">have</div><div class="node phrase" id="n-lp_P2" style="left:390.0px;top:100.0px;width:72px;height:34px">lay</div><div class="node phrase" id="n-lp_P3" style="left:470.0px;top:125.0px;width:72px;height:34px">have</div><div class="node phrase" id="n-lp_P4" style="left:545.0px;top:190.0px;width:76px;height:34px">require</div><div class="node phrase" id="n-lp_P5" style="left:615.0px;top:135.0px;width:88px;height:34px">reproduce</div><div class="node phrase" id="n-lp_P6" style="left:675.0px;top:105.0px;width:72px;height:34px">are</div><div class="node phrase" id="n-lp_P7" style="left:175.0px;top:220.0px;width:72px;height:34px">have</div><div class="node phrase" id="n-lp_P8" style="left:240.0px;top:210.0px;width:72px;height:34px">have</div><div class="node phrase" id="n-lp_P9" style="left:315.0px;top:210.0px;width:72px;height:34px">have</div><div class="node phrase" id="n-lp_P10" style="left:375.0px;top:280.0px;width:72px;height:34px">have</div><div class="node phrase" id="n-lp_P11" style="left:70.0px;top:310.0px;width:72px;height:34px">offer</div><div class="node phrase" id="n-lp_P12" style="left:175.0px;top:335.0px;width:100px;height:34px">provide for</div><div class="node phrase" id="n-lp_P13" style="left:390.0px;top:360.0px;width:148px;height:34px">is necessary due to</div><div class="node phrase" id="n-lp_P14" style="left:555.0px;top:470.0px;width:82px;height:34px">provides</div><div class="node phrase" id="n-lp_P15" style="left:610.0px;top:420.0px;width:72px;height:34px">for</div><div class="node phrase" id="n-lp_P16" style="left:680.0px;top:310.0px;width:72px;height:34px">from</div><div class="node phrase" id="n-lp_P17" style="left:765.0px;top:320.0px;width:76px;height:34px">produce</div><div class="node phrase" id="n-lp_P18" style="left:800.0px;top:215.0px;width:72px;height:34px">means</div><div class="node phrase" id="n-lp_P19" style="left:870.0px;top:350.0px;width:82px;height:34px">maintain</div><div class="node phrase" id="n-lp_P20" style="left:620.0px;top:590.0px;width:148px;height:34px">much is required to</div><div class="node phrase cross" id="n-lp_P21" style="left:235.0px;top:560.0px;width:76px;height:34px">help to</div><div class="node phrase cross" id="n-lp_P22" style="left:955.0px;top:275.0px;width:76px;height:34px">some do</div><div class="node phrase cross" id="n-lp_P23" style="left:555.0px;top:345.0px;width:82px;height:34px">provides</div>
+        </div>
+      </div>
+    </section>
+    <aside>
+      <section class="panel">
+        <h2>Propositions</h2>
+        <table>
+          <thead><tr><th>ID</th><th>Proposition</th><th>Type</th></tr></thead>
+          <tbody><tr><td>P1</td><td>Birds have Two Feet</td><td>hierarchy</td></tr><tr><td>P2</td><td>Birds lay Eggs</td><td>hierarchy</td></tr><tr><td>P3</td><td>Birds have Two
+Wings</td><td>hierarchy</td></tr><tr><td>P4</td><td>Birds require Food</td><td>hierarchy</td></tr><tr><td>P5</td><td>Birds reproduce Sexually</td><td>hierarchy</td></tr><tr><td>P6</td><td>Birds are Endotherms</td><td>hierarchy</td></tr><tr><td>P7</td><td>Birds have Feathers</td><td>hierarchy</td></tr><tr><td>P8</td><td>Birds have Hollow
+Bones</td><td>hierarchy</td></tr><tr><td>P9</td><td>Birds have Beaks</td><td>hierarchy</td></tr><tr><td>P10</td><td>Birds have Rapid Digestive
+Systems</td><td>hierarchy</td></tr><tr><td>P11</td><td>Feathers offer Insulation</td><td>hierarchy</td></tr><tr><td>P12</td><td>Hollow
+Bones provide for Light body
+weights</td><td>hierarchy</td></tr><tr><td>P13</td><td>Rapid Digestive
+Systems is necessary due to High
+metabolism</td><td>hierarchy</td></tr><tr><td>P14</td><td>High
+metabolism provides Energy</td><td>hierarchy</td></tr><tr><td>P15</td><td>Food for Energy</td><td>hierarchy</td></tr><tr><td>P16</td><td>Heat from Food</td><td>hierarchy</td></tr><tr><td>P17</td><td>Warm-Blooded
+Animals produce Heat</td><td>hierarchy</td></tr><tr><td>P18</td><td>Endotherms means Warm-Blooded
+Animals</td><td>hierarchy</td></tr><tr><td>P19</td><td>Warm-Blooded
+Animals maintain Constant Body
+Temperature</td><td>hierarchy</td></tr><tr><td>P20</td><td>Energy much is required to Fly</td><td>hierarchy</td></tr><tr><td>P21</td><td>Light body
+weights help to Fly</td><td>cross-link</td></tr><tr><td>P22</td><td>Birds some do Fly</td><td>cross-link</td></tr><tr><td>P23</td><td>High
+metabolism provides Food</td><td>cross-link</td></tr></tbody>
+        </table>
+      </section>
+      <section class="panel">
+        <h2>Parking Lot</h2>
+        <ul><li>Birds</li><li>Two Feet</li><li>Eggs</li><li>Two Wings</li><li>Food</li><li>Endotherms</li><li>Feathers</li><li>Hollow Bones</li><li>Rapid Digestive Systems</li><li>High Metabolism</li><li>Energy</li><li>Fly</li></ul>
+      </section>
+      
+      <section class="panel">
+        <h2>Learning Checks</h2>
+        <ol><li><p>Birds -&gt; ________ -&gt; Eggs</p><details><summary>Answer</summary><p>lay</p></details></li><li><p>Warm-Blooded Animals -&gt; maintain -&gt; ________</p><ol type="A"><li>Constant Body Temperature</li><li>Two Wings</li><li>Insulation</li></ol><details><summary>Answer</summary><p>Constant Body Temperature</p></details></li></ol>
+      </section>
+    </aside>
+  </main>
+  <script>
+    const wrap = document.getElementById('canvasWrap');
+    const canvasWidth = 1151;
+    const canvasHeight = 808;
+    let scale = 1;
+    function applyScale() {
+      wrap.style.transform = `scale(${scale})`;
+      wrap.style.marginRight = `${canvasWidth * (scale - 1)}px`;
+      wrap.style.marginBottom = `${canvasHeight * (scale - 1)}px`;
+    }
+    document.querySelectorAll('[data-zoom]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const action = button.dataset.zoom;
+        if (action === 'in') scale = Math.min(1.8, scale + 0.15);
+        if (action === 'out') scale = Math.max(0.55, scale - 0.15);
+        if (action === 'reset') scale = 1;
+        applyScale();
+      });
+    });
+    const detailsButton = document.querySelector('[data-toggle-details]');
+    if (new URLSearchParams(window.location.search).get('details') === 'hidden') {
+      document.body.classList.add('details-hidden');
+      detailsButton.textContent = 'Show Details';
+    }
+    detailsButton.addEventListener('click', () => {
+      document.body.classList.toggle('details-hidden');
+      detailsButton.textContent = document.body.classList.contains('details-hidden') ? 'Show Details' : 'Hide Details';
+    });
+  </script>
+</body>
+</html>

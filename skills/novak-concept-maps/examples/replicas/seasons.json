@@ -1,0 +1,43 @@
+{
+  "title": "What Causes Seasons",
+  "theme": "cmap-yellow",
+  "focus_question": "What causes seasons?",
+  "concepts": [
+    {"id": "seasons", "label": "Seasons", "rank": 0, "x": 350, "y": 40, "w": 112, "h": 42},
+    {"id": "sunlight", "label": "Amount of\nSunlight", "rank": 1, "x": 340, "y": 150, "w": 120, "h": 58},
+    {"id": "temperature_variations", "label": "Seasonal\nTemperature\nVariations", "rank": 1, "x": 600, "y": 150, "w": 150, "h": 70},
+    {"id": "length_day", "label": "Length\nof Day", "rank": 2, "x": 145, "y": 285, "w": 105, "h": 58},
+    {"id": "height_sun", "label": "Height of Sun\nabove Horizon", "rank": 2, "x": 455, "y": 285, "w": 155, "h": 58},
+    {"id": "summer", "label": "Summer", "rank": 3, "x": 70, "y": 430, "w": 105, "h": 42},
+    {"id": "winter", "label": "Winter", "rank": 3, "x": 600, "y": 430, "w": 105, "h": 42},
+    {"id": "tilt", "label": "23.5 Degrees\nTilt of Axis\nof Earth", "rank": 3, "x": 240, "y": 455, "w": 135, "h": 78},
+    {"id": "position", "label": "Position\nin Orbit", "rank": 3, "x": 500, "y": 475, "w": 120, "h": 58},
+    {"id": "towards_sun", "label": "Towards\nthe Sun", "rank": 4, "x": 95, "y": 575, "w": 115, "h": 58},
+    {"id": "away_sun", "label": "Away\nfrom Sun", "rank": 4, "x": 385, "y": 575, "w": 115, "h": 58},
+    {"id": "distance", "label": "Distance\nto Sun", "rank": 4, "x": 650, "y": 525, "w": 120, "h": 58},
+    {"id": "negligible", "label": "Negligible\nEffect on\nSeasons", "rank": 4, "x": 810, "y": 505, "w": 135, "h": 70}
+  ],
+  "propositions": [
+    {"id": "P1", "from": "seasons", "link": "are determined by", "to": "sunlight", "type": "hierarchy", "phrase_x": 365, "phrase_y": 92},
+    {"id": "P2", "from": "sunlight", "link": "results in", "to": "temperature_variations", "type": "hierarchy", "phrase_x": 500, "phrase_y": 174},
+    {"id": "P3", "from": "sunlight", "link": "is determined by", "to": "length_day", "type": "hierarchy", "phrase_x": 260, "phrase_y": 240},
+    {"id": "P4", "from": "sunlight", "link": "is determined by", "to": "height_sun", "type": "hierarchy", "phrase_x": 440, "phrase_y": 240},
+    {"id": "P5", "from": "length_day", "link": "is longer in", "to": "summer", "type": "hierarchy", "phrase_x": 65, "phrase_y": 360},
+    {"id": "P6", "from": "length_day", "link": "is shorter in", "to": "winter", "type": "hierarchy", "phrase_x": 405, "phrase_y": 360},
+    {"id": "P7", "from": "height_sun", "link": "is higher in", "to": "summer", "type": "hierarchy", "phrase_x": 205, "phrase_y": 370},
+    {"id": "P8", "from": "height_sun", "link": "is lower in", "to": "winter", "type": "hierarchy", "phrase_x": 575, "phrase_y": 360},
+    {"id": "P9", "from": "height_sun", "link": "is determined by", "to": "tilt", "type": "hierarchy", "phrase_x": 380, "phrase_y": 405},
+    {"id": "P10", "from": "length_day", "link": "is determined by", "to": "position", "type": "hierarchy", "phrase_x": 380, "phrase_y": 430},
+    {"id": "P11", "from": "tilt", "link": "points", "to": "towards_sun", "type": "hierarchy", "phrase_x": 195, "phrase_y": 545},
+    {"id": "P12", "from": "tilt", "link": "points", "to": "away_sun", "type": "hierarchy", "phrase_x": 355, "phrase_y": 555},
+    {"id": "P13", "from": "towards_sun", "link": "in", "to": "summer", "type": "hierarchy", "phrase_x": 90, "phrase_y": 510},
+    {"id": "P14", "from": "away_sun", "link": "in", "to": "winter", "type": "hierarchy", "phrase_x": 505, "phrase_y": 500},
+    {"id": "P15", "from": "position", "link": "has slight variation in", "to": "distance", "type": "hierarchy", "phrase_x": 520, "phrase_y": 545},
+    {"id": "P16", "from": "distance", "link": "has", "to": "negligible", "type": "hierarchy", "phrase_x": 785, "phrase_y": 540}
+  ],
+  "parking_lot": ["Seasons", "Amount of Sunlight", "Seasonal Temperature Variations", "Length of Day", "Height of Sun above Horizon", "Summer", "Winter", "23.5 Degrees Tilt of Axis of Earth", "Position in Orbit", "Distance to Sun"],
+  "exercises": [
+    {"type": "fill_link", "prompt": "Seasons -> ________ -> Amount of Sunlight", "answer": "are determined by"},
+    {"type": "choose_link", "prompt": "Height of Sun above Horizon -> ? -> Winter", "options": ["is lower in", "is longer in", "has slight variation in"], "answer": "is lower in"}
+  ]
+}

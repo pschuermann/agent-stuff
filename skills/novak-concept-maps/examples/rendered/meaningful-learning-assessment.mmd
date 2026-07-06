@@ -1,0 +1,10 @@
+flowchart TB
+  meaningful_learning["Meaningful Learning"]
+  new_concepts["New Concepts"]
+  prior_knowledge["Prior Knowledge"]
+  concept_maps["Concept Maps"]
+  propositions["Propositions"]
+  meaningful_learning -->|"requires"| prior_knowledge
+  meaningful_learning -->|"integrates"| new_concepts
+  new_concepts -->|"form"| propositions
+  concept_maps -.->|"make visible"| propositions
