@@ -23,17 +23,42 @@ Use this skill while drafting the first version, not only as a cleanup pass. The
 - Inflated significance, faux profundity, or inspirational endings.
 - Tidy three-part rhythms when the material does not naturally have three parts.
 - Slogan-like conclusions, aphorisms, and manufactured punchlines.
-- Performative transitions such as "it's not just X, it's Y" unless the contrast is genuinely doing work.
+- Contrast flips ("it's not just X, it's Y", "isn't X — it's Y", "X — not Y, not Z — did…"). The attribution test decides: a contrast stays only if the source or author explicitly made both halves of it — then keep it and attribute it. Otherwise delete the negated half and state the affirmative claim. Do not keep a flip because it feels like it's "doing work"; to the writer who just produced it, it always does.
 - Overexplaining obvious stakes or adding reassuring summaries the reader does not need.
 - Making the prose more dramatic, writerly, casual, or quirky than the source calls for.
 
 ## Final Check
 
-Before returning prose, quickly ask:
+Self-assessment questions do not catch these tells — the process that wrote them will grade them as fine. The check is mechanical.
 
-- Does this say something specific in the first sentence?
-- Could a knowledgeable person have written this without trying to sound impressive?
-- Did any phrase survive mainly because it sounds polished?
-- Does the ending stop where the thought ends?
+**For prose being written to a file:** draft to a scratch file first, then lint it with the Vale style that ships with this skill (`vale/` directory here — rules for contrast flips, negation chains, framing hooks, intensifiers, stock AI phrases, and the Kobak et al. excess-vocabulary list):
+
+```bash
+vale --config ~/.claude/skills/plainspoken-prose/vale/.vale.ini <draft>
+```
+
+Vale is markup-aware: code blocks and HTML comments are skipped automatically. Each alert's message states the fix. Resolve every **error** (rewrite, or attribute if the contrast is explicitly the source's own) and read every **warning** (intensifiers and excess-vocab words have legitimate uses — judge each hit, don't skip the scan). Exit code 0 with no unjustified warnings is the bar before saving.
+
+If `vale` is unavailable, fall back to:
+
+```bash
+rg -n "not just|isn't [^.]* — it's|it's not [^,]*, it's|— not [^—]*, not|[Tt]he real (story|point|question|subject)|literally|genuinely|simply|truly|; it just" <draft>
+```
+
+When a new tell slips through to a reader, add a rule (or token) for it under `vale/styles/Plainspoken/` so the linter learns from the miss.
+
+**Auditing an existing library of files:** running the Vale scan across a whole directory (not just one draft) is common when checking whether past output holds up. If the scan turns up errors in more than a handful of files (roughly 10+), don't fix them one by one yourself — batch the flagged files into groups and delegate fix-application to parallel subagents with a lower-power model override (e.g. haiku), each given the exact file:line hits and the attribution-test rule. Keep in the main loop: spot-checking a sample of their fixes for quality, deciding ambiguous attribution calls they escalate, and the final re-scan across the whole directory to confirm everything landed. This is mechanical, rule-following work at volume — exactly what should be handed off rather than done inline.
+
+**For chat-only prose:** apply the same patterns by reading your draft against the Avoid list, sentence by sentence, before sending.
+
+Example of the rewrite direction:
+
+> ✗ "Salvatore's real subject here is what changed underneath the field, not just what changed in the models."
+> ✓ "Salvatore takes stock of what changed underneath the field."
+
+> ✗ "It was reinforcement learning against a verifiable signal — not RLHF, not just bigger pretraining — that let models exceed the ceiling."
+> ✓ "Reinforcement learning against a verifiable signal is what let models exceed the ceiling."
+
+Then confirm: the first sentence says something specific, and the ending stops where the thought ends.
 
 Return the finished prose unless the user asks for alternatives, commentary, or a comparison.

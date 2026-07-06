@@ -1,0 +1,7 @@
+extends: existence
+message: "Tacked-on restatement. If the point already landed, stop; don't restate it in miniature."
+level: warning
+ignorecase: true
+nonword: true
+raw:
+  - "(?:; it just |; it's just |\\. In short, |\\. Put differently, |\\. The takeaway[:,] )"

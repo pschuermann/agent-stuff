@@ -8,3 +8,4 @@ todo-*.md
 .playwright-cli/
 outputs/
 .pi-subagents/
+.DS_Store

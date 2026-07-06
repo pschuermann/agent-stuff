@@ -1,0 +1,21 @@
+extends: existence
+message: "Stock AI phrase '%s'. Replace with a concrete statement of what you actually mean."
+level: error
+ignorecase: true
+tokens:
+  - a testament to
+  - stands as a
+  - plays a (?:crucial|vital|pivotal|key) role
+  - in the ever-evolving
+  - it's (?:important|worth) (?:to note|noting)
+  - at its core
+  - a double-edged sword
+  - game-?changer
+  - paradigm shift
+  - rich tapestry
+  - treasure trove
+  - the landscape of
+  - navigate the (?:complexities|challenges)
+  - unlock(?:s|ing)? the (?:power|potential|secrets)
+  - dive (?:deep )?into
+  - a deep dive

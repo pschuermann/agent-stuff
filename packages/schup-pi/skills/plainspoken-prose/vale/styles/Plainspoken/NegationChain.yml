@@ -1,0 +1,7 @@
+extends: existence
+message: "Appositive negation chain ('X — not A, not B — did...'). Delete the negated clauses and state the affirmative ('X is what did...')."
+level: error
+ignorecase: true
+nonword: true
+raw:
+  - "— not [^—\\n]{1,80}?, not "

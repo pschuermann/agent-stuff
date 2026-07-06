@@ -1,0 +1,7 @@
+extends: existence
+message: "Contrast flip. Attribution test: keep only if the source explicitly made both halves (then attribute it); otherwise delete the negated half and state the affirmative claim."
+level: error
+ignorecase: true
+nonword: true
+raw:
+  - "(?:\\bnot just\\b|\\bisn't [^.\\n]{0,60}? — it's\\b|\\bit's not [^,\\n]{0,60}?, it's\\b|\\bit (?:was|is)n?'?t? [^,\\n]{0,40}?, but [^,\\n]{0,40}? that\\b)"

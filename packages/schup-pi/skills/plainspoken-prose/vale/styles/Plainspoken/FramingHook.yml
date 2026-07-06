@@ -1,0 +1,8 @@
+extends: existence
+message: "Inflated framing hook. Say the point directly instead of announcing that it is the real point."
+level: error
+ignorecase: true
+tokens:
+  - "the real (?:story|point|question|subject|issue|problem|lesson) (?:here )?is"
+  - "here's the (?:thing|kicker|catch)"
+  - "what's (?:really|actually) (?:going on|happening) (?:here )?is"

@@ -1,0 +1,39 @@
+extends: existence
+message: "'%s' is LLM excess vocabulary (Kobak et al. 2024, Science Advances). Use a plainer word."
+level: warning
+ignorecase: true
+tokens:
+  - delve
+  - delves
+  - delving
+  - intricate
+  - intricacies
+  - meticulous
+  - meticulously
+  - pivotal
+  - showcase
+  - showcases
+  - showcasing
+  - underscore
+  - underscores
+  - underscoring
+  - boasts
+  - boasting
+  - seamless
+  - seamlessly
+  - fostering
+  - garner
+  - garnered
+  - vibrant
+  - crucially
+  - notably
+  - realm
+  - realms
+  - multifaceted
+  - commendable
+  - noteworthy
+  - invaluable
+  - elevate
+  - elevates
+  - encompassing
+  - burgeoning

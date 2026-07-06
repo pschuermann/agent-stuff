@@ -1,0 +1,11 @@
+extends: existence
+message: "Inflation intensifier '%s'. Delete it or replace with something specific; the claim should carry its own weight."
+level: warning
+ignorecase: true
+tokens:
+  - literally
+  - genuinely
+  - truly
+  - simply
+  - deeply
+  - profoundly
