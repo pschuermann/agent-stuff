@@ -6,3 +6,5 @@ node_modules
 todo-*.md
 *.profraw
 .playwright-cli/
+outputs/
+.pi-subagents/
