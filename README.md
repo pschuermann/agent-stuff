@@ -7,7 +7,7 @@ The root package is still [`mitsupi`](https://www.npmjs.com/package/mitsupi): Ar
 ## Packages in this repo
 
 - [`mitsupi`](package.json) — root package. Treat this as upstream-owned, except for deliberate local patches.
-- [`packages/schup-pi`](packages/schup-pi) — personal Pi package for local extensions, skills, themes, and helper scripts. Commands intentionally keep natural names rather than a `schup-` prefix.
+- [`packages/schup-pi`](packages/schup-pi) — personal Pi package for local extensions, skills, and helper scripts. Commands intentionally keep natural names rather than a `schup-` prefix.
 - [`packages/pi-sci`](packages/pi-sci) — auditable research workflow package with `/sci-*` prompt templates and research skills.
 
 ## Root `mitsupi` resources

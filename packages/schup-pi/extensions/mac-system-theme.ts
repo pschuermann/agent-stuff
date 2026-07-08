@@ -14,7 +14,7 @@ const execFileAsync = promisify(execFile);
 
 const POLL_MS = 2000;
 const DARK_THEME = "nightowl";
-const LIGHT_THEME = "modern-light";
+const LIGHT_THEME = "light";
 const BUILTIN_DARK_THEME = "dark";
 const BUILTIN_LIGHT_THEME = "light";
 

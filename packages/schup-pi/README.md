@@ -1,6 +1,6 @@
 # schup-pi
 
-Personal Pi package for Pirmin Schuermann's extensions, skills, themes, and helper scripts.
+Personal Pi package for Pirmin Schuermann's extensions, skills, and helper scripts.
 
 This package intentionally uses natural command names rather than a `schup-` command prefix. If a command collides with `mitsupi`, either patch/filter the `mitsupi` command or accept Pi's numeric suffixes for duplicate extension commands.
 

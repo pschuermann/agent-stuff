@@ -1,14 +1,20 @@
 {
   "name": "schup-pi",
   "version": "0.1.0",
-  "description": "Pirmin Schuermann's personal Pi extensions, skills, themes, and support utilities",
+  "description": "Pirmin Schuermann's personal Pi extensions, skills, and support utilities",
   "private": true,
   "type": "module",
   "keywords": [
     "pi-package",
     "pi-extension",
-    "pi-skill",
-    "pi-theme"
+    "pi-skill"
+  ],
+  "files": [
+    "README.md",
+    "package.json",
+    "extensions",
+    "skills",
+    "session-insights.mjs"
   ],
   "pi": {
     "extensions": [
@@ -16,9 +22,6 @@
     ],
     "skills": [
       "./skills"
-    ],
-    "themes": [
-      "./themes"
     ]
   },
   "dependencies": {
