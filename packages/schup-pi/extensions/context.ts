@@ -124,7 +124,8 @@ function buildSkillIndex(pi: ExtensionAPI, cwd: string): SkillIndexEntry[] {
 		.getCommands()
 		.filter((c) => c.source === "skill")
 		.map((c) => {
-			const p = c.path ? normalizeReadPath(c.path, cwd) : "";
+			const sourcePath = c.sourceInfo?.path ?? (c as { path?: string }).path;
+			const p = sourcePath ? normalizeReadPath(sourcePath, cwd) : "";
 			return {
 				name: normalizeSkillName(c.name),
 				skillFilePath: p,
@@ -247,6 +248,48 @@ function joinComma(items: string[]): string {
 
 function joinCommaStyled(items: string[], renderItem: (item: string) => string, sep: string): string {
 	return items.map(renderItem).join(sep);
+}
+
+async function describeCommandProvenance(pi: ExtensionAPI, query: string): Promise<string> {
+	const commandName = query.trim().replace(/^command\s+/, "").replace(/^\//, "");
+	if (!commandName) return "Usage: /context <command-name>";
+
+	const commands = pi.getCommands();
+	const matches = commands.filter((command) => command.name === commandName);
+	if (matches.length === 0) {
+		return `No extension, prompt, or skill command found for /${commandName}. Built-in interactive commands are not included in pi.getCommands().`;
+	}
+
+	const lines: string[] = [`Command provenance for /${commandName}`];
+	for (const command of matches) {
+		const sourceInfo = command.sourceInfo;
+		const sourcePath = sourceInfo?.path ?? (command as { path?: string }).path;
+		let realPath: string | undefined;
+		if (sourcePath && !sourcePath.startsWith("<")) {
+			try {
+				realPath = await fs.realpath(sourcePath);
+			} catch {
+				// Ignore paths that cannot be resolved, e.g. virtual/temporary sources.
+			}
+		}
+
+		lines.push("");
+		lines.push(`/${command.name}`);
+		lines.push(`  source: ${command.source}`);
+		if (command.description) lines.push(`  description: ${command.description}`);
+		if (sourcePath) lines.push(`  path: ${sourcePath}`);
+		if (realPath && sourcePath && realPath !== path.resolve(sourcePath)) {
+			lines.push(`  realpath: ${realPath}`);
+		}
+		if (sourceInfo) {
+			lines.push(`  scope: ${sourceInfo.scope}`);
+			lines.push(`  sourceInfo.source: ${sourceInfo.source}`);
+			lines.push(`  origin: ${sourceInfo.origin}`);
+			if (sourceInfo.baseDir) lines.push(`  baseDir: ${sourceInfo.baseDir}`);
+		}
+	}
+
+	return lines.join("\n");
 }
 
 type ContextViewData = {
@@ -471,15 +514,23 @@ export default function contextExtension(pi: ExtensionAPI) {
 	});
 
 	pi.registerCommand("context", {
-		description: "Show loaded context overview",
-		handler: async (_args, ctx: ExtensionCommandContext) => {
+		description: "Show loaded context overview, or /context <command> for command provenance",
+		handler: async (args, ctx: ExtensionCommandContext) => {
+			if (args?.trim()) {
+				pi.sendMessage(
+					{ customType: "context", content: await describeCommandProvenance(pi, args), display: true },
+					{ triggerTurn: false },
+				);
+				return;
+			}
+
 			const commands = pi.getCommands();
 			const extensionCmds = commands.filter((c) => c.source === "extension");
 			const skillCmds = commands.filter((c) => c.source === "skill");
 
 			const extensionsByPath = new Map<string, string[]>();
 			for (const c of extensionCmds) {
-				const p = c.path ?? "<unknown>";
+				const p = c.sourceInfo?.path ?? (c as { path?: string }).path ?? "<unknown>";
 				const arr = extensionsByPath.get(p) ?? [];
 				arr.push(c.name);
 				extensionsByPath.set(p, arr);

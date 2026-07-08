@@ -31,7 +31,7 @@ Use this skill while drafting the first version, not only as a cleanup pass. The
 
 Self-assessment questions do not catch these tells — the process that wrote them will grade them as fine. The check is mechanical.
 
-**For prose being written to a file:** draft to a scratch file first, then lint it with the Vale style that ships with this skill (`vale/` directory here — rules for contrast flips, negation chains, framing hooks, vague unattributed claims, rhetorical self-answers, manufactured urgency, intensifiers, stock AI phrases, and the Kobak et al. excess-vocabulary list):
+**For prose being written to a file:** draft to a scratch file first, then lint it with the Vale style that ships with this skill (`vale/` directory here — rules for contrast flips, negation chains, framing hooks, vague unattributed claims, rhetorical self-answers, manufactured urgency, intensifiers, em-dashes, stock AI phrases, and the Kobak et al. excess-vocabulary list):
 
 ```bash
 vale --config ~/.claude/skills/plainspoken-prose/vale/.vale.ini <draft>
@@ -42,7 +42,7 @@ Vale is markup-aware: code blocks and HTML comments are skipped automatically. E
 If `vale` is unavailable, fall back to:
 
 ```bash
-rg -n "not just|isn't [^.]* — it's|it's not [^,]*, it's|— not [^—]*, not|[Tt]he real (story|point|question|subject)|literally|genuinely|simply|truly|; it just" <draft>
+rg -n "—|not just|isn't [^.]* — it's|it's not [^,]*, it's|— not [^—]*, not|[Tt]he real (story|point|question|subject)|literally|genuinely|simply|truly|; it just" <draft>
 ```
 
 When a new tell slips through to a reader, add a rule (or token) for it under `vale/styles/Plainspoken/` so the linter learns from the miss.

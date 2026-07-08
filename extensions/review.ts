@@ -3,7 +3,7 @@
  *
  * Provides a `/review` command that prompts the agent to review code changes.
  * Supports multiple review modes:
- * - Review a GitHub pull request (checks out the PR locally)
+ * - Review a GitHub pull request (uses a temporary git worktree)
  * - Review against a base branch (PR style)
  * - Review uncommitted changes
  * - Review a specific commit
@@ -11,7 +11,7 @@
  *
  * Usage:
  * - `/review` - show interactive selector
- * - `/review pr 123` - review PR #123 (checks out locally)
+ * - `/review pr 123` - review PR #123 (uses a temporary git worktree)
  * - `/review pr https://github.com/owner/repo/pull/123` - review PR from URL
  * - `/review uncommitted` - review uncommitted changes directly
  * - `/review branch main` - review against main branch
@@ -24,7 +24,7 @@
  * - If a REVIEW_GUIDELINES.md file exists in the same directory as .pi,
  *   its contents are appended to the review prompt.
  *
- * Note: PR review requires a clean working tree (no uncommitted changes to tracked files).
+ * Note: PR review uses a temporary git worktree, so it does not require a clean current checkout.
  */
 
 import type { ExtensionAPI, ExtensionContext, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
@@ -45,6 +45,8 @@ import { promises as fs } from "node:fs";
 // Module-level state means only one review can be active at a time.
 // This is intentional - the UI and /end-review command assume a single active review.
 let reviewOriginId: string | undefined = undefined;
+let reviewWorktreePath: string | undefined = undefined;
+let reviewWorktreeSourceRepoPath: string | undefined = undefined;
 let endReviewInProgress = false;
 let reviewLoopFixingEnabled = false;
 let reviewCustomInstructions: string | undefined = undefined;
@@ -60,6 +62,8 @@ const REVIEW_LOOP_START_POLL_MS = 50;
 type ReviewSessionState = {
 	active: boolean;
 	originId?: string;
+	worktreePath?: string;
+	worktreeSourceRepoPath?: string;
 };
 
 type ReviewSettingsState = {
@@ -108,11 +112,15 @@ function applyReviewState(ctx: ExtensionContext) {
 
 	if (state?.active && state.originId) {
 		reviewOriginId = state.originId;
+		reviewWorktreePath = state.worktreePath;
+		reviewWorktreeSourceRepoPath = state.worktreeSourceRepoPath;
 		setReviewWidget(ctx, true);
 		return;
 	}
 
 	reviewOriginId = undefined;
+	reviewWorktreePath = undefined;
+	reviewWorktreeSourceRepoPath = undefined;
 	setReviewWidget(ctx, false);
 }
 
@@ -355,8 +363,22 @@ type ReviewTarget =
 	| { type: "uncommitted" }
 	| { type: "baseBranch"; branch: string }
 	| { type: "commit"; sha: string; title?: string }
-	| { type: "pullRequest"; prNumber: number; baseBranch: string; title: string }
+	| {
+		type: "pullRequest";
+		prNumber: number;
+		baseBranch: string;
+		title: string;
+		repoPath?: string;
+		repo?: string;
+		worktreePath?: string;
+		worktreeSourceRepoPath?: string;
+	}
 	| { type: "folder"; paths: string[] };
+
+type PrReference = {
+	number: number;
+	repo?: string;
+};
 
 // Prompts (adapted from Codex)
 const UNCOMMITTED_PROMPT =
@@ -379,8 +401,14 @@ const COMMIT_PROMPT = "Review the code changes introduced by commit {sha}. Provi
 const PULL_REQUEST_PROMPT =
 	'Review pull request #{prNumber} ("{title}") against the base branch \'{baseBranch}\'. The merge base commit for this comparison is {mergeBaseSha}. Run `git diff {mergeBaseSha}` to inspect the changes that would be merged. Provide prioritized, actionable findings.';
 
+const PULL_REQUEST_PROMPT_WITH_REPO_PATH =
+	'Review pull request #{prNumber} ("{title}") in `{repoPath}` against the base branch \'{baseBranch}\'. This may be a temporary review worktree. The merge base commit for this comparison is {mergeBaseSha}. Run `cd {repoPath}` first, then run `git diff {mergeBaseSha}` to inspect the changes that would be merged. Provide prioritized, actionable findings.';
+
 const PULL_REQUEST_PROMPT_FALLBACK =
 	'Review pull request #{prNumber} ("{title}") against the base branch \'{baseBranch}\'. Start by finding the merge base between the current branch and {baseBranch} (e.g., `git merge-base HEAD {baseBranch}`), then run `git diff` against that SHA to see the changes that would be merged. Provide prioritized, actionable findings.';
+
+const PULL_REQUEST_PROMPT_FALLBACK_WITH_REPO_PATH =
+	'Review pull request #{prNumber} ("{title}") in `{repoPath}` against the base branch \'{baseBranch}\'. This may be a temporary review worktree. Run `cd {repoPath}` first. Then find the merge base between the current branch and {baseBranch} (e.g., `git merge-base HEAD {baseBranch}`), then run `git diff` against that SHA to see the changes that would be merged. Provide prioritized, actionable findings.';
 
 const FOLDER_REVIEW_PROMPT =
 	"Review the code in the following paths: {paths}. This is a snapshot review (not a diff). Read the files directly in these paths and provide prioritized, actionable findings.";
@@ -525,26 +553,33 @@ async function loadProjectReviewGuidelines(cwd: string): Promise<string | null> 
 async function getMergeBase(
 	pi: ExtensionAPI,
 	branch: string,
+	repoPath?: string,
 ): Promise<string | null> {
 	try {
+		const gitArgs = (args: string[]) => repoPath ? ["-C", repoPath, ...args] : args;
 		// First try to get the upstream tracking branch
-		const { stdout: upstream, code: upstreamCode } = await pi.exec("git", [
+		const { stdout: upstream, code: upstreamCode } = await pi.exec("git", gitArgs([
 			"rev-parse",
 			"--abbrev-ref",
 			`${branch}@{upstream}`,
-		]);
+		]));
 
 		if (upstreamCode === 0 && upstream.trim()) {
-			const { stdout: mergeBase, code } = await pi.exec("git", ["merge-base", "HEAD", upstream.trim()]);
+			const { stdout: mergeBase, code } = await pi.exec("git", gitArgs(["merge-base", "HEAD", upstream.trim()]));
 			if (code === 0 && mergeBase.trim()) {
 				return mergeBase.trim();
 			}
 		}
 
-		// Fall back to using the branch directly
-		const { stdout: mergeBase, code } = await pi.exec("git", ["merge-base", "HEAD", branch]);
-		if (code === 0 && mergeBase.trim()) {
-			return mergeBase.trim();
+		// Fall back to using the branch directly, then origin/<branch>. Detached
+		// review worktrees often do not have a local base branch, but prepareReviewWorktree
+		// fetches the remote base ref before building the prompt.
+		const candidates = branch.includes("/") ? [branch] : [branch, `origin/${branch}`];
+		for (const candidate of candidates) {
+			const { stdout: mergeBase, code } = await pi.exec("git", gitArgs(["merge-base", "HEAD", candidate]));
+			if (code === 0 && mergeBase.trim()) {
+				return mergeBase.trim();
+			}
 		}
 
 		return null;
@@ -605,24 +640,82 @@ async function hasPendingChanges(pi: ExtensionAPI): Promise<boolean> {
 	return trackedChanges.length > 0;
 }
 
+async function getRepoRoot(pi: ExtensionAPI, cwd?: string): Promise<string | null> {
+	const { stdout, code } = await pi.exec("git", ["rev-parse", "--show-toplevel"], cwd ? { cwd } : undefined);
+	return code === 0 && stdout.trim() ? stdout.trim() : null;
+}
+
+async function findLocalRepoPath(pi: ExtensionAPI, repo: string, cwd: string = process.cwd()): Promise<string | null> {
+	const repoName = repo.split("/").pop();
+	if (!repoName) return null;
+
+	const candidatePaths = [
+		cwd,
+		path.join(cwd, "repos", repoName),
+		path.join(process.env.HOME ?? "", "pgs", repoName),
+		path.join(process.env.HOME ?? "", "repos", repoName),
+		path.join(process.env.HOME ?? "", "repos", "projectx", "repos", repoName),
+	].filter((candidate) => candidate.length > 0);
+
+	for (const candidatePath of candidatePaths) {
+		const stats = await fs.stat(candidatePath).catch(() => null);
+		if (!stats?.isDirectory()) continue;
+
+		const rootPath = await getRepoRoot(pi, candidatePath);
+		if (!rootPath) continue;
+		const { stdout: remoteUrl, code: remoteCode } = await pi.exec("git", ["remote", "get-url", "origin"], {
+			cwd: rootPath,
+		});
+		if (remoteCode !== 0) continue;
+
+		if (githubRemoteMatchesRepo(remoteUrl.trim(), repo)) {
+			return rootPath;
+		}
+	}
+
+	return null;
+}
+
+async function getGithubRepoFromLocalRepo(pi: ExtensionAPI, repoPath: string): Promise<string | null> {
+	const { stdout, code } = await pi.exec("git", ["remote", "get-url", "origin"], { cwd: repoPath });
+	if (code !== 0) return null;
+
+	return parseGithubRepoFromRemote(stdout.trim());
+}
+
+function parseGithubRepoFromRemote(remoteUrl: string): string | null {
+	const normalizedRemote = remoteUrl.trim().replace(/\.git$/, "");
+	const match = normalizedRemote.match(/github\.com[:/]([^/]+)\/([^/]+)$/i);
+	if (!match) return null;
+
+	return `${match[1]}/${match[2]}`;
+}
+
+function githubRemoteMatchesRepo(remoteUrl: string, repo: string): boolean {
+	return parseGithubRepoFromRemote(remoteUrl)?.toLowerCase() === repo.toLowerCase();
+}
+
 /**
  * Parse a PR reference (URL or number) and return the PR number
  */
-function parsePrReference(ref: string): number | null {
+function parsePrReference(ref: string): PrReference | null {
 	const trimmed = ref.trim();
 
 	// Try as a number first
 	const num = parseInt(trimmed, 10);
 	if (!isNaN(num) && num > 0) {
-		return num;
+		return { number: num };
 	}
 
 	// Try to extract from GitHub URL
 	// Formats: https://github.com/owner/repo/pull/123
 	//          github.com/owner/repo/pull/123
-	const urlMatch = trimmed.match(/github\.com\/[^/]+\/[^/]+\/pull\/(\d+)/);
+	const urlMatch = trimmed.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
 	if (urlMatch) {
-		return parseInt(urlMatch[1], 10);
+		return {
+			repo: `${urlMatch[1]}/${urlMatch[2]}`,
+			number: parseInt(urlMatch[3], 10),
+		};
 	}
 
 	return null;
@@ -631,11 +724,12 @@ function parsePrReference(ref: string): number | null {
 /**
  * Get PR information from GitHub CLI
  */
-async function getPrInfo(pi: ExtensionAPI, prNumber: number): Promise<{ baseBranch: string; title: string; headBranch: string } | null> {
-	const { stdout, code } = await pi.exec("gh", [
-		"pr", "view", String(prNumber),
-		"--json", "baseRefName,title,headRefName",
-	]);
+async function getPrInfo(pi: ExtensionAPI, prNumber: number, repo?: string): Promise<{ baseBranch: string; title: string; headBranch: string } | null> {
+	const args = ["pr", "view", String(prNumber), "--json", "baseRefName,title,headRefName"];
+	if (repo) {
+		args.push("--repo", repo);
+	}
+	const { stdout, code } = await pi.exec("gh", args);
 
 	if (code !== 0) return null;
 
@@ -651,17 +745,187 @@ async function getPrInfo(pi: ExtensionAPI, prNumber: number): Promise<{ baseBran
 	}
 }
 
-/**
- * Checkout a PR using GitHub CLI
- */
-async function checkoutPr(pi: ExtensionAPI, prNumber: number): Promise<{ success: boolean; error?: string }> {
-	const { stdout, stderr, code } = await pi.exec("gh", ["pr", "checkout", String(prNumber)]);
+type ReviewWorktreeResult = {
+	success: boolean;
+	worktreePath?: string;
+	error?: string;
+	reusedDirtyWorktree?: boolean;
+};
 
-	if (code !== 0) {
-		return { success: false, error: stderr || stdout || "Failed to checkout PR" };
+function getReviewWorktreePath(repo: string, prNumber: number, suffix?: string): string {
+	const [owner, repoName] = repo.split("/");
+	const home = process.env.HOME ?? process.cwd();
+	const leaf = suffix ? `pr-${prNumber}-${suffix}` : `pr-${prNumber}`;
+	return path.join(home, ".pi", "review-worktrees", "github.com", owner, repoName, leaf);
+}
+
+async function prepareReviewWorktree(
+	pi: ExtensionAPI,
+	ctx: ExtensionContext,
+	sourceRepoPath: string,
+	repo: string,
+	prNumber: number,
+	baseBranch?: string,
+): Promise<ReviewWorktreeResult> {
+	const remotePrRef = `refs/pull/${prNumber}/head`;
+	const localPrRef = `refs/remotes/pi-review/pr-${prNumber}`;
+	let worktreePath = getReviewWorktreePath(repo, prNumber);
+
+	if (baseBranch) {
+		await pi.exec("git", ["fetch", "origin", `+refs/heads/${baseBranch}:refs/remotes/origin/${baseBranch}`], {
+			cwd: sourceRepoPath,
+		}).catch(() => null);
 	}
 
-	return { success: true };
+	const fetchResult = await pi.exec("git", ["fetch", "origin", `+${remotePrRef}:${localPrRef}`], { cwd: sourceRepoPath });
+	if (fetchResult.code !== 0) {
+		return {
+			success: false,
+			error: fetchResult.stderr || fetchResult.stdout || `Failed to fetch ${remotePrRef}`,
+		};
+	}
+
+	const existing = await getExistingWorktreeState(pi, worktreePath);
+	if (existing === "dirty") {
+		const dirtyWorktreeMatchesPrHead = await gitRefMatchesHead(pi, sourceRepoPath, worktreePath, localPrRef);
+		const choices = dirtyWorktreeMatchesPrHead
+			? ["Use existing dirty worktree", "Create a fresh temporary worktree", "Cancel"]
+			: ["Create a fresh temporary worktree", "Cancel"];
+		const prompt = dirtyWorktreeMatchesPrHead
+			? `Review worktree for ${repo} PR #${prNumber} already has local changes:`
+			: `Review worktree for ${repo} PR #${prNumber} has local changes and is not at the current PR head:`;
+		const choice = await ctx.ui.select(prompt, choices);
+
+		if (choice === "Use existing dirty worktree") {
+			return { success: true, worktreePath, reusedDirtyWorktree: true };
+		}
+
+		if (choice !== "Create a fresh temporary worktree") {
+			return { success: false, error: "Cancelled" };
+		}
+
+		worktreePath = getReviewWorktreePath(repo, prNumber, new Date().toISOString().replace(/[:.]/g, "-"));
+	} else if (existing === "not-git") {
+		return {
+			success: false,
+			error: `Review worktree path exists but is not a git checkout: ${worktreePath}`,
+		};
+	}
+
+	if (await pathExists(worktreePath)) {
+		const checkoutResult = await pi.exec("git", ["checkout", "--detach", localPrRef], { cwd: worktreePath });
+		if (checkoutResult.code !== 0) {
+			return {
+				success: false,
+				error: checkoutResult.stderr || checkoutResult.stdout || `Failed to update review worktree at ${worktreePath}`,
+			};
+		}
+
+		const resetResult = await pi.exec("git", ["reset", "--hard", localPrRef], { cwd: worktreePath });
+		if (resetResult.code !== 0) {
+			return {
+				success: false,
+				error: resetResult.stderr || resetResult.stdout || `Failed to reset review worktree at ${worktreePath}`,
+			};
+		}
+
+		const cleanResult = await pi.exec("git", ["clean", "-fd"], { cwd: worktreePath });
+		if (cleanResult.code !== 0) {
+			return {
+				success: false,
+				error: cleanResult.stderr || cleanResult.stdout || `Failed to clean review worktree at ${worktreePath}`,
+			};
+		}
+
+		return { success: true, worktreePath };
+	}
+
+	await fs.mkdir(path.dirname(worktreePath), { recursive: true });
+	await pi.exec("git", ["worktree", "prune"], { cwd: sourceRepoPath }).catch(() => null);
+	const addResult = await pi.exec("git", ["worktree", "add", "--detach", worktreePath, localPrRef], {
+		cwd: sourceRepoPath,
+	});
+	if (addResult.code !== 0) {
+		return {
+			success: false,
+			error: addResult.stderr || addResult.stdout || `Failed to create review worktree at ${worktreePath}`,
+		};
+	}
+
+	return { success: true, worktreePath };
+}
+
+async function gitRefMatchesHead(
+	pi: ExtensionAPI,
+	sourceRepoPath: string,
+	worktreePath: string,
+	ref: string,
+): Promise<boolean> {
+	const { stdout: headSha, code: headCode } = await pi.exec("git", ["rev-parse", "HEAD"], { cwd: worktreePath });
+	if (headCode !== 0) return false;
+
+	const { stdout: refSha, code: refCode } = await pi.exec("git", ["rev-parse", ref], { cwd: sourceRepoPath });
+	if (refCode !== 0) return false;
+
+	return headSha.trim() === refSha.trim();
+}
+
+async function getExistingWorktreeState(pi: ExtensionAPI, worktreePath: string): Promise<"missing" | "clean" | "dirty" | "not-git"> {
+	const stats = await fs.stat(worktreePath).catch(() => null);
+	if (!stats) return "missing";
+	if (!stats.isDirectory()) return "not-git";
+
+	const { code } = await pi.exec("git", ["rev-parse", "--is-inside-work-tree"], { cwd: worktreePath });
+	if (code !== 0) return "not-git";
+
+	return (await isGitCheckoutClean(pi, worktreePath)) ? "clean" : "dirty";
+}
+
+async function isGitCheckoutClean(pi: ExtensionAPI, repoPath: string): Promise<boolean> {
+	const { stdout, code } = await pi.exec("git", ["status", "--porcelain"], { cwd: repoPath });
+	return code === 0 && stdout.trim().length === 0;
+}
+
+async function pathExists(targetPath: string): Promise<boolean> {
+	return Boolean(await fs.stat(targetPath).catch(() => null));
+}
+
+type ActiveReviewWorktree = {
+	worktreePath: string;
+	worktreeSourceRepoPath?: string;
+};
+
+function getTargetReviewWorktree(target: ReviewTarget | null): ActiveReviewWorktree | undefined {
+	if (target?.type !== "pullRequest" || !target.worktreePath) return undefined;
+	return {
+		worktreePath: target.worktreePath,
+		worktreeSourceRepoPath: target.worktreeSourceRepoPath,
+	};
+}
+
+async function cleanupReviewWorktreeIfClean(pi: ExtensionAPI, ctx: ExtensionContext, worktree: ActiveReviewWorktree | undefined): Promise<void> {
+	if (!worktree?.worktreePath) return;
+
+	const state = await getExistingWorktreeState(pi, worktree.worktreePath);
+	if (state === "missing") return;
+
+	if (state !== "clean") {
+		ctx.ui.notify(`Kept review worktree because it has local changes: ${worktree.worktreePath}`, "warning");
+		return;
+	}
+
+	const sourcePath = worktree.worktreeSourceRepoPath ?? worktree.worktreePath;
+	const removeResult = await pi.exec("git", ["worktree", "remove", "--force", worktree.worktreePath], { cwd: sourcePath });
+	if (removeResult.code !== 0) {
+		ctx.ui.notify(
+			`Review finished, but failed to remove clean worktree ${worktree.worktreePath}: ${removeResult.stderr || removeResult.stdout}`,
+			"warning",
+		);
+		return;
+	}
+
+	await pi.exec("git", ["worktree", "prune"], { cwd: sourcePath }).catch(() => null);
+	ctx.ui.notify(`Deleted clean temporary review worktree: ${worktree.worktreePath}`, "info");
 }
 
 /**
@@ -722,7 +986,22 @@ async function buildReviewPrompt(
 			return COMMIT_PROMPT.replace("{sha}", target.sha);
 
 		case "pullRequest": {
-			const mergeBase = await getMergeBase(pi, target.baseBranch);
+			const mergeBase = await getMergeBase(pi, target.baseBranch, target.repoPath);
+			if (target.repoPath) {
+				const basePrompt = mergeBase
+					? PULL_REQUEST_PROMPT_WITH_REPO_PATH
+							.replace(/{prNumber}/g, String(target.prNumber))
+							.replace(/{title}/g, target.title)
+							.replace(/{baseBranch}/g, target.baseBranch)
+							.replace(/{mergeBaseSha}/g, mergeBase)
+							.replace(/{repoPath}/g, target.repoPath)
+					: PULL_REQUEST_PROMPT_FALLBACK_WITH_REPO_PATH
+							.replace(/{prNumber}/g, String(target.prNumber))
+							.replace(/{title}/g, target.title)
+							.replace(/{baseBranch}/g, target.baseBranch)
+							.replace(/{repoPath}/g, target.repoPath);
+				return includeLocalChanges ? `${basePrompt} ${LOCAL_CHANGES_REVIEW_INSTRUCTIONS}` : basePrompt;
+			}
 			const basePrompt = mergeBase
 				? PULL_REQUEST_PROMPT
 						.replace(/{prNumber}/g, String(target.prNumber))
@@ -1284,12 +1563,6 @@ export default function reviewExtension(pi: ExtensionAPI) {
 	 * Show PR input and handle checkout
 	 */
 	async function showPrInput(ctx: ExtensionContext): Promise<ReviewTarget | null> {
-		// First check for pending changes that would prevent branch switching
-		if (await hasPendingChanges(pi)) {
-			ctx.ui.notify("Cannot checkout PR: you have uncommitted changes. Please commit or stash them first.", "error");
-			return null;
-		}
-
 		// Get PR reference from user
 		const prRef = await ctx.ui.editor(
 			"Enter PR number or URL (e.g. 123 or https://github.com/owner/repo/pull/123):",
@@ -1298,44 +1571,7 @@ export default function reviewExtension(pi: ExtensionAPI) {
 
 		if (!prRef?.trim()) return null;
 
-		const prNumber = parsePrReference(prRef);
-		if (!prNumber) {
-			ctx.ui.notify("Invalid PR reference. Enter a number or GitHub PR URL.", "error");
-			return null;
-		}
-
-		// Get PR info from GitHub
-		ctx.ui.notify(`Fetching PR #${prNumber} info...`, "info");
-		const prInfo = await getPrInfo(pi, prNumber);
-
-		if (!prInfo) {
-			ctx.ui.notify(`Could not find PR #${prNumber}. Make sure gh is authenticated and the PR exists.`, "error");
-			return null;
-		}
-
-		// Check again for pending changes (in case something changed)
-		if (await hasPendingChanges(pi)) {
-			ctx.ui.notify("Cannot checkout PR: you have uncommitted changes. Please commit or stash them first.", "error");
-			return null;
-		}
-
-		// Checkout the PR
-		ctx.ui.notify(`Checking out PR #${prNumber}...`, "info");
-		const checkoutResult = await checkoutPr(pi, prNumber);
-
-		if (!checkoutResult.success) {
-			ctx.ui.notify(`Failed to checkout PR: ${checkoutResult.error}`, "error");
-			return null;
-		}
-
-		ctx.ui.notify(`Checked out PR #${prNumber} (${prInfo.headBranch})`, "info");
-
-		return {
-			type: "pullRequest",
-			prNumber,
-			baseBranch: prInfo.baseBranch,
-			title: prInfo.title,
-		};
+		return handlePrCheckout(ctx, prRef);
 	}
 
 	/**
@@ -1352,6 +1588,9 @@ export default function reviewExtension(pi: ExtensionAPI) {
 			ctx.ui.notify("Already in a review. Use /end-review to finish first.", "warning");
 			return false;
 		}
+
+		const targetWorktreePath = target.type === "pullRequest" ? target.worktreePath : undefined;
+		const targetWorktreeSourceRepoPath = target.type === "pullRequest" ? target.worktreeSourceRepoPath : undefined;
 
 		// Handle fresh session mode
 		if (useFreshSession) {
@@ -1400,12 +1639,19 @@ export default function reviewExtension(pi: ExtensionAPI) {
 
 			// Restore origin after navigation events (session_tree can reset it)
 			reviewOriginId = lockedOriginId;
+			reviewWorktreePath = targetWorktreePath;
+			reviewWorktreeSourceRepoPath = targetWorktreeSourceRepoPath;
 
 			// Show widget indicating review is active
 			setReviewWidget(ctx, true);
 
 			// Persist review state so tree navigation can restore/reset it
-			pi.appendEntry(REVIEW_STATE_TYPE, { active: true, originId: lockedOriginId });
+			pi.appendEntry(REVIEW_STATE_TYPE, {
+				active: true,
+				originId: lockedOriginId,
+				worktreePath: targetWorktreePath,
+				worktreeSourceRepoPath: targetWorktreeSourceRepoPath,
+			});
 		}
 
 		const prompt = await buildReviewPrompt(pi, target, {
@@ -1564,43 +1810,62 @@ export default function reviewExtension(pi: ExtensionAPI) {
 	 * Handle PR checkout and return a ReviewTarget (or null on failure)
 	 */
 	async function handlePrCheckout(ctx: ExtensionContext, ref: string): Promise<ReviewTarget | null> {
-		// First check for pending changes
-		if (await hasPendingChanges(pi)) {
-			ctx.ui.notify("Cannot checkout PR: you have uncommitted changes. Please commit or stash them first.", "error");
+		const prRefInfo = parsePrReference(ref);
+		if (!prRefInfo) {
+			ctx.ui.notify("Invalid PR reference. Enter a number or GitHub PR URL.", "error");
 			return null;
 		}
 
-		const prNumber = parsePrReference(ref);
-		if (!prNumber) {
-			ctx.ui.notify("Invalid PR reference. Enter a number or GitHub PR URL.", "error");
+		const prNumber = prRefInfo.number;
+		const sourceRepoPath = prRefInfo.repo
+			? await findLocalRepoPath(pi, prRefInfo.repo, ctx.cwd)
+			: await getRepoRoot(pi, ctx.cwd);
+		if (!sourceRepoPath) {
+			const repoHint = prRefInfo.repo ? ` for ${prRefInfo.repo}` : "";
+			ctx.ui.notify(`Could not find a local checkout${repoHint}. Clone it or run /review from that repo.`, "error");
+			return null;
+		}
+
+		const repo = prRefInfo.repo ?? await getGithubRepoFromLocalRepo(pi, sourceRepoPath);
+		if (!repo) {
+			ctx.ui.notify(`Could not determine GitHub repository for ${sourceRepoPath}.`, "error");
 			return null;
 		}
 
 		// Get PR info
 		ctx.ui.notify(`Fetching PR #${prNumber} info...`, "info");
-		const prInfo = await getPrInfo(pi, prNumber);
+		const prInfo = await getPrInfo(pi, prNumber, repo);
 
 		if (!prInfo) {
 			ctx.ui.notify(`Could not find PR #${prNumber}. Make sure gh is authenticated and the PR exists.`, "error");
 			return null;
 		}
 
-		// Checkout the PR
-		ctx.ui.notify(`Checking out PR #${prNumber}...`, "info");
-		const checkoutResult = await checkoutPr(pi, prNumber);
-
-		if (!checkoutResult.success) {
-			ctx.ui.notify(`Failed to checkout PR: ${checkoutResult.error}`, "error");
+		ctx.ui.notify(`Preparing temporary review worktree for ${repo} PR #${prNumber}...`, "info");
+		const worktreeResult = await prepareReviewWorktree(pi, ctx, sourceRepoPath, repo, prNumber, prInfo.baseBranch);
+		if (!worktreeResult.success || !worktreeResult.worktreePath) {
+			if (worktreeResult.error !== "Cancelled") {
+				ctx.ui.notify(`Failed to prepare review worktree: ${worktreeResult.error ?? "Unknown error"}`, "error");
+			}
 			return null;
 		}
 
-		ctx.ui.notify(`Checked out PR #${prNumber} (${prInfo.headBranch})`, "info");
+		ctx.ui.notify(
+			worktreeResult.reusedDirtyWorktree
+				? `Using existing dirty review worktree: ${worktreeResult.worktreePath}`
+				: `Ready to review PR #${prNumber} in temporary worktree: ${worktreeResult.worktreePath}`,
+			"info",
+		);
 
 		return {
 			type: "pullRequest",
 			prNumber,
 			baseBranch: prInfo.baseBranch,
 			title: prInfo.title,
+			repoPath: worktreeResult.worktreePath,
+			repo,
+			worktreePath: worktreeResult.worktreePath,
+			worktreeSourceRepoPath: sourceRepoPath,
 		};
 	}
 
@@ -1637,6 +1902,7 @@ export default function reviewExtension(pi: ExtensionAPI) {
 					extraInstruction,
 				});
 				if (!started) {
+					await cleanupReviewWorktreeIfClean(pi, ctx, getTargetReviewWorktree(target));
 					ctx.ui.notify("Loop fixing stopped before starting the review pass.", "warning");
 					return;
 				}
@@ -1751,16 +2017,16 @@ export default function reviewExtension(pi: ExtensionAPI) {
 				return;
 			}
 
-			// Check if we're in a git repository
-			const { code } = await pi.exec("git", ["rev-parse", "--git-dir"]);
-			if (code !== 0) {
-				ctx.ui.notify("Not a git repository", "error");
-				return;
-			}
+			// Most review modes need the current directory to be a git repo. A full
+			// GitHub PR URL can resolve a different local checkout, so parse args before
+			// rejecting non-repo working directories.
+			const { code: gitCode } = await pi.exec("git", ["rev-parse", "--git-dir"]);
+			const inGitRepo = gitCode === 0;
 
 			// Try to parse direct arguments
 			let target: ReviewTarget | null = null;
 			let fromSelector = false;
+			let attemptedDirectPr = false;
 			let extraInstruction: string | undefined;
 			const parsed = parseArgs(args);
 			if (parsed.error) {
@@ -1771,18 +2037,29 @@ export default function reviewExtension(pi: ExtensionAPI) {
 
 			if (parsed.target) {
 				if (parsed.target.type === "pr") {
+					attemptedDirectPr = true;
 					// Handle PR checkout (async operation)
 					target = await handlePrCheckout(ctx, parsed.target.ref);
 					if (!target) {
 						ctx.ui.notify("PR review failed. Returning to review menu.", "warning");
 					}
 				} else {
+					if (!inGitRepo) {
+						ctx.ui.notify("Not a git repository", "error");
+						return;
+					}
 					target = parsed.target;
 				}
 			}
 
 			// If no args or invalid args, show selector
 			if (!target) {
+				if (!inGitRepo) {
+					if (!attemptedDirectPr) {
+						ctx.ui.notify("Not a git repository", "error");
+					}
+					return;
+				}
 				fromSelector = true;
 			}
 
@@ -1818,11 +2095,18 @@ export default function reviewExtension(pi: ExtensionAPI) {
 				// In an empty session, default to fresh review mode so /end-review works consistently.
 				let useFreshSession = messageCount === 0;
 
-				if (messageCount > 0) {
+				if (messageCount > 0 && target.type === "pullRequest" && target.worktreePath) {
+					ctx.ui.notify(
+						"PR worktree reviews use Empty branch mode so /end-review can clean up the temporary checkout.",
+						"info",
+					);
+					useFreshSession = true;
+				} else if (messageCount > 0) {
 					// Existing session - ask user which mode they want
 					const choice = await ctx.ui.select("Start review in:", ["Empty branch", "Current session"]);
 
 					if (choice === undefined) {
+						await cleanupReviewWorktreeIfClean(pi, ctx, getTargetReviewWorktree(target));
 						if (fromSelector) {
 							target = null;
 							continue;
@@ -1834,7 +2118,10 @@ export default function reviewExtension(pi: ExtensionAPI) {
 					useFreshSession = choice === "Empty branch";
 				}
 
-				await executeReview(ctx, target, useFreshSession, { extraInstruction });
+				const started = await executeReview(ctx, target, useFreshSession, { extraInstruction });
+				if (!started) {
+					await cleanupReviewWorktreeIfClean(pi, ctx, getTargetReviewWorktree(target));
+				}
 				return;
 			}
 		},
@@ -1851,6 +2138,7 @@ Required sections (in order):
 
 ## Review Scope
 - What was reviewed (files/paths, changes, and scope)
+- Repository path or temporary review worktree path, if one was used
 
 ## Verdict
 - "correct" or "needs attention"
@@ -1888,14 +2176,15 @@ Preserve exact file paths, function names, and error messages where available.`;
 
 Instructions:
 1. Treat the summary's Findings/Fix Queue as a checklist.
-2. Fix in priority order: P0, P1, then P2 (include P3 if quick and safe).
-3. If a finding is invalid/already fixed/not possible right now, briefly explain why and continue.
-4. Treat "Human Reviewer Callouts (Non-Blocking)" as informational only; do not convert them into fix tasks unless there is a separate explicit finding.
-5. Follow fail-fast error handling: do not add local catch/fallback recovery unless this scope is an explicit boundary that can safely translate the failure.
-6. If you add or keep a \`try/catch\`, explain the expected failure mode and either rethrow with context or return a boundary-safe error response.
-7. JSON parsing/decoding should fail loudly by default; avoid silent fallback parsing.
-8. Run relevant tests/checks for touched code where practical.
-9. End with: fixed items, deferred/skipped items (with reasons), and verification results.`;
+2. If the review scope names a repository path, change into that repository before editing or running checks.
+3. Fix in priority order: P0, P1, then P2 (include P3 if quick and safe).
+4. If a finding is invalid/already fixed/not possible right now, briefly explain why and continue.
+5. Treat "Human Reviewer Callouts (Non-Blocking)" as informational only; do not convert them into fix tasks unless there is a separate explicit finding.
+6. Follow fail-fast error handling: do not add local catch/fallback recovery unless this scope is an explicit boundary that can safely translate the failure.
+7. If you add or keep a \`try/catch\`, explain the expected failure mode and either rethrow with context or return a boundary-safe error response.
+8. JSON parsing/decoding should fail loudly by default; avoid silent fallback parsing.
+9. Run relevant tests/checks for touched code where practical.
+10. End with: fixed items, deferred/skipped items (with reasons), and verification results.`;
 
 	type EndReviewAction = "returnOnly" | "returnAndFix" | "returnAndSummarize";
 	type EndReviewActionResult = "ok" | "cancelled" | "error";
@@ -1912,6 +2201,8 @@ Instructions:
 		const state = getReviewState(ctx);
 		if (state?.active && state.originId) {
 			reviewOriginId = state.originId;
+			reviewWorktreePath = state.worktreePath;
+			reviewWorktreeSourceRepoPath = state.worktreeSourceRepoPath;
 			return reviewOriginId;
 		}
 
@@ -1924,9 +2215,30 @@ Instructions:
 		return undefined;
 	}
 
+	function getActiveReviewWorktree(ctx: ExtensionContext): ActiveReviewWorktree | undefined {
+		if (reviewWorktreePath) {
+			return {
+				worktreePath: reviewWorktreePath,
+				worktreeSourceRepoPath: reviewWorktreeSourceRepoPath,
+			};
+		}
+
+		const state = getReviewState(ctx);
+		if (!state?.worktreePath) return undefined;
+
+		reviewWorktreePath = state.worktreePath;
+		reviewWorktreeSourceRepoPath = state.worktreeSourceRepoPath;
+		return {
+			worktreePath: state.worktreePath,
+			worktreeSourceRepoPath: state.worktreeSourceRepoPath,
+		};
+	}
+
 	function clearReviewState(ctx: ExtensionContext) {
 		setReviewWidget(ctx, false);
 		reviewOriginId = undefined;
+		reviewWorktreePath = undefined;
+		reviewWorktreeSourceRepoPath = undefined;
 		pi.appendEntry(REVIEW_STATE_TYPE, { active: false });
 	}
 
@@ -1977,6 +2289,7 @@ Instructions:
 		}
 
 		const notifySuccess = options.notifySuccess ?? true;
+		const activeWorktree = getActiveReviewWorktree(ctx);
 
 		if (action === "returnOnly") {
 			try {
@@ -1991,6 +2304,7 @@ Instructions:
 			}
 
 			clearReviewState(ctx);
+			await cleanupReviewWorktreeIfClean(pi, ctx, activeWorktree);
 			if (notifySuccess) {
 				ctx.ui.notify("Review complete! Returned to original position.", "info");
 			}
@@ -2019,6 +2333,7 @@ Instructions:
 			if (!ctx.ui.getEditorText().trim()) {
 				ctx.ui.setEditorText("Act on the review findings");
 			}
+			await cleanupReviewWorktreeIfClean(pi, ctx, activeWorktree);
 			if (notifySuccess) {
 				ctx.ui.notify("Review complete! Returned and summarized.", "info");
 			}
@@ -2027,7 +2342,8 @@ Instructions:
 
 		pi.sendUserMessage(REVIEW_FIX_FINDINGS_PROMPT, { deliverAs: "followUp" });
 		if (notifySuccess) {
-			ctx.ui.notify("Review complete! Returned and queued a follow-up to fix findings.", "info");
+			const worktreeMessage = activeWorktree?.worktreePath ? ` Fixes will be made in ${activeWorktree.worktreePath}.` : "";
+			ctx.ui.notify(`Review complete! Returned and queued a follow-up to fix findings.${worktreeMessage}`, "info");
 		}
 		return "ok";
 	}

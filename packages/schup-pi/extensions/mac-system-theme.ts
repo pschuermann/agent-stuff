@@ -53,11 +53,17 @@ function applyTheme(ctx: ExtensionContext, themeName: string): boolean {
 	return true;
 }
 
-function syncTheme(
+async function syncTheme(
 	ctx: ExtensionContext,
 	currentTheme: string | undefined,
-	appearance: Appearance,
-): string | undefined {
+	isActive: () => boolean,
+): Promise<string | undefined> {
+	const appearance = await getMacAppearance();
+
+	// The macOS poll may have been in-flight while pi reloaded or replaced the
+	// session. Do not touch ctx after that point: pi marks old contexts stale.
+	if (!isActive()) return currentTheme;
+
 	const preferredTheme = preferredThemeForAppearance(appearance);
 	const fallbackTheme = fallbackThemeForAppearance(appearance);
 	const themes = availableThemeNames(ctx);
@@ -76,32 +82,22 @@ export default function (pi: ExtensionAPI) {
 	let intervalId: ReturnType<typeof setInterval> | undefined;
 	let currentTheme: string | undefined;
 	let syncInFlight = false;
-	let sessionToken = 0;
+	let activeSyncToken: object | undefined;
 
-	function isStaleError(err: unknown): boolean {
-		return (
-			err instanceof Error &&
-			err.message.includes("stale after session replacement or reload")
-		);
-	}
-
-	function clearPoller() {
-		if (intervalId) clearInterval(intervalId);
-		intervalId = undefined;
+	function isStaleContextError(err: unknown): boolean {
+		return err instanceof Error && err.message.includes("stale after session replacement or reload");
 	}
 
 	function handleSyncError(err: unknown) {
-		if (isStaleError(err)) return;
+		if (isStaleContextError(err)) return;
 		console.error("[mac-system-theme] theme sync failed", err);
 	}
 
-	async function sync(ctx: ExtensionContext, token: number) {
-		if (syncInFlight || token !== sessionToken) return;
+	async function sync(ctx: ExtensionContext, syncToken: object) {
+		if (syncInFlight || activeSyncToken !== syncToken) return;
 		syncInFlight = true;
 		try {
-			const appearance = await getMacAppearance();
-			if (token !== sessionToken) return;
-			currentTheme = syncTheme(ctx, currentTheme, appearance);
+			currentTheme = await syncTheme(ctx, currentTheme, () => activeSyncToken === syncToken);
 		} catch (err) {
 			handleSyncError(err);
 		} finally {
@@ -110,21 +106,24 @@ export default function (pi: ExtensionAPI) {
 	}
 
 	pi.on("session_start", async (_event, ctx) => {
-		const token = ++sessionToken;
-		clearPoller();
+		if (intervalId) clearInterval(intervalId);
 
-		await sync(ctx, token);
-		if (token !== sessionToken) return;
+		const syncToken = {};
+		activeSyncToken = syncToken;
+
+		await sync(ctx, syncToken);
+		if (activeSyncToken !== syncToken) return;
 
 		intervalId = setInterval(() => {
-			void sync(ctx, token);
+			void sync(ctx, syncToken);
 		}, POLL_MS);
 		intervalId.unref?.();
 	});
 
 	pi.on("session_shutdown", () => {
-		++sessionToken;
-		clearPoller();
+		activeSyncToken = undefined;
+		if (intervalId) clearInterval(intervalId);
+		intervalId = undefined;
 	});
 
 	pi.registerCommand("theme-sync-status", {
