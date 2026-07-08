@@ -1,0 +1,8 @@
+extends: existence
+message: "Em-dash (or en-dash / '--'). Rewrite with a comma, colon, period, or parentheses. Exceptions: a verbatim quotation from a source, or an en-dash in a numeric range."
+level: error
+nonword: true
+tokens:
+  - '—'
+  - '–'
+  - '--'
