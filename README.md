@@ -43,6 +43,8 @@ Pi user settings should load packages rather than direct root extension paths:
 
 Claude Code still needs skills exposed separately. Use symlinks from `~/.claude/skills` to the desired skill directories in either root `skills/`, `packages/schup-pi/skills/`, or `packages/pi-sci/skills/`.
 
+The root extensions also include [`continue.ts`](extensions/continue.ts), where `shift+option+enter` sends `continue` only when the agent is stopped.
+
 ## Development
 
 Install root dependencies with npm:
