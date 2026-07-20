@@ -1,6 +1,18 @@
 {
   "title": "Meaningful Learning",
   "focus_question": "How does meaningful learning happen in Novak's concept mapping theory?",
+  "sources": [
+    {
+      "id": "novak-2002",
+      "citation": "Novak, J. D. (2002). Meaningful Learning: The Essential Factor for Conceptual Change.",
+      "url": "https://doi.org/10.1002/sce.10032"
+    },
+    {
+      "id": "novak-canas-2008",
+      "citation": "Novak, J. D., and Cañas, A. J. (2008). The Theory Underlying Concept Maps.",
+      "url": "https://cmap.ihmc.us/docs/theory-of-concept-maps"
+    }
+  ],
   "concepts": [
     {"id": "meaningful_learning", "label": "Meaningful Learning", "rank": 0},
     {"id": "learner", "label": "Learner", "rank": 1},
@@ -14,15 +26,15 @@
     {"id": "misconceptions", "label": "Misconceptions", "rank": 3}
   ],
   "propositions": [
-    {"id": "P1", "from": "meaningful_learning", "link": "requires", "to": "prior_knowledge", "type": "hierarchy"},
-    {"id": "P2", "from": "learner", "link": "chooses to integrate", "to": "new_knowledge", "type": "hierarchy"},
-    {"id": "P3", "from": "new_knowledge", "link": "is connected with", "to": "prior_knowledge", "type": "hierarchy"},
-    {"id": "P4", "from": "concepts", "link": "combine into", "to": "propositions", "type": "hierarchy"},
-    {"id": "P5", "from": "linking_phrases", "link": "make explicit", "to": "propositions", "type": "hierarchy"},
-    {"id": "P6", "from": "concept_maps", "link": "represent", "to": "propositions", "type": "hierarchy"},
-    {"id": "P7", "from": "focus_question", "link": "sets context for", "to": "concept_maps", "type": "hierarchy"},
-    {"id": "P8", "from": "concept_maps", "link": "can reveal", "to": "misconceptions", "type": "cross-link"},
-    {"id": "P9", "from": "misconceptions", "link": "may be faulty", "to": "propositions", "type": "cross-link"}
+    {"id": "P1", "from": "meaningful_learning", "link": "requires", "to": "prior_knowledge", "type": "hierarchy", "source_refs": ["novak-2002"]},
+    {"id": "P2", "from": "learner", "link": "chooses to integrate", "to": "new_knowledge", "type": "hierarchy", "source_refs": ["novak-2002"]},
+    {"id": "P3", "from": "new_knowledge", "link": "is connected with", "to": "prior_knowledge", "type": "hierarchy", "source_refs": ["novak-2002"]},
+    {"id": "P4", "from": "concepts", "link": "combine into", "to": "propositions", "type": "hierarchy", "source_refs": ["novak-canas-2008"]},
+    {"id": "P5", "from": "linking_phrases", "link": "make explicit", "to": "propositions", "type": "hierarchy", "source_refs": ["novak-canas-2008"]},
+    {"id": "P6", "from": "concept_maps", "link": "represent", "to": "propositions", "type": "hierarchy", "source_refs": ["novak-canas-2008"]},
+    {"id": "P7", "from": "focus_question", "link": "sets context for", "to": "concept_maps", "type": "hierarchy", "source_refs": ["novak-canas-2008"]},
+    {"id": "P8", "from": "concept_maps", "link": "can reveal", "to": "misconceptions", "type": "cross-link", "source_refs": ["novak-2002", "novak-canas-2008"]},
+    {"id": "P9", "from": "misconceptions", "link": "may be faulty", "to": "propositions", "type": "cross-link", "source_refs": ["novak-2002"]}
   ],
   "parking_lot": [
     "Meaningful Learning",

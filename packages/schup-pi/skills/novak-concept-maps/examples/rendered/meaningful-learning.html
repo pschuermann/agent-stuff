@@ -113,6 +113,7 @@
       align-items: center;
       justify-content: center;
       text-align: center;
+      white-space: pre-line;
       line-height: 1.12;
       padding: 5px 9px;
       z-index: 2;
@@ -139,10 +140,65 @@
       color: #77341e;
       background: #fff8f3;
     }
+    body.theme-cmap-yellow {
+      --paper: #fbfbfb;
+      --concept-fill: #ece66b;
+      --concept-border: #ece66b;
+      --phrase-fill: rgba(255, 255, 255, .82);
+      --phrase-border: transparent;
+      --line: #333333;
+      --cross: #8a452c;
+    }
+    body.theme-cmap-yellow .concept {
+      border-radius: 7px;
+      border-color: var(--concept-border);
+      box-shadow: 5px 5px 0 #8d902f;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    body.theme-cmap-yellow .phrase {
+      border-color: transparent;
+      background: rgba(255, 255, 255, .72);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11px;
+      font-style: normal;
+    }
+    body.theme-cmap-blue {
+      --paper: #ffffff;
+      --concept-fill: #ffffff;
+      --concept-border: #18179a;
+      --phrase-fill: rgba(255, 255, 255, .82);
+      --phrase-border: transparent;
+      --line: #111111;
+      --cross: #111111;
+    }
+    body.theme-cmap-blue .concept {
+      border-radius: 0;
+      border: 2px solid var(--concept-border);
+      box-shadow: none;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+    }
+    body.theme-cmap-blue .phrase {
+      border-color: transparent;
+      background: rgba(255, 255, 255, .72);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 18px;
+      font-style: normal;
+      font-weight: 800;
+    }
     aside {
       background: #fffdf7;
       overflow: auto;
       padding: 16px;
+    }
+    body.details-hidden main {
+      grid-template-columns: 1fr;
+    }
+    body.details-hidden aside {
+      display: none;
     }
     .panel {
       border-top: 1px solid #d7d1c4;
@@ -157,6 +213,11 @@
     h2 {
       font: 700 14px ui-sans-serif, system-ui, sans-serif;
       margin: 0 0 10px;
+      letter-spacing: 0;
+    }
+    h3 {
+      font: 700 12px ui-sans-serif, system-ui, sans-serif;
+      margin: 12px 0 7px;
       letter-spacing: 0;
     }
     table {
@@ -190,7 +251,7 @@
     }
   </style>
 </head>
-<body>
+<body class="theme-default">
   <header>
     <h1>Meaningful Learning</h1>
     <p class="focus"><strong>Focus question:</strong> How does meaningful learning happen in Novak's concept mapping theory?</p>
@@ -198,6 +259,7 @@
       <button type="button" data-zoom="in">Zoom In</button>
       <button type="button" data-zoom="out">Zoom Out</button>
       <button type="button" data-zoom="reset">Reset</button>
+      <button type="button" data-toggle-details>Hide Details</button>
     </div>
   </header>
   <main>
@@ -220,18 +282,20 @@
       <section class="panel">
         <h2>Propositions</h2>
         <table>
-          <thead><tr><th>ID</th><th>Proposition</th><th>Type</th></tr></thead>
-          <tbody><tr><td>P1</td><td>Meaningful Learning requires Prior Knowledge</td><td>hierarchy</td></tr><tr><td>P2</td><td>Learner chooses to integrate New Knowledge</td><td>hierarchy</td></tr><tr><td>P3</td><td>New Knowledge is connected with Prior Knowledge</td><td>hierarchy</td></tr><tr><td>P4</td><td>Concepts combine into Propositions</td><td>hierarchy</td></tr><tr><td>P5</td><td>Linking Phrases make explicit Propositions</td><td>hierarchy</td></tr><tr><td>P6</td><td>Concept Maps represent Propositions</td><td>hierarchy</td></tr><tr><td>P7</td><td>Focus Question sets context for Concept Maps</td><td>hierarchy</td></tr><tr><td>P8</td><td>Concept Maps can reveal Misconceptions</td><td>cross-link</td></tr><tr><td>P9</td><td>Misconceptions may be faulty Propositions</td><td>cross-link</td></tr></tbody>
+          <thead><tr><th>ID</th><th>Proposition</th><th>Type</th><th>Sources</th></tr></thead>
+          <tbody><tr><td>P1</td><td>Meaningful Learning requires Prior Knowledge</td><td>hierarchy</td><td>novak-2002</td></tr><tr><td>P2</td><td>Learner chooses to integrate New Knowledge</td><td>hierarchy</td><td>novak-2002</td></tr><tr><td>P3</td><td>New Knowledge is connected with Prior Knowledge</td><td>hierarchy</td><td>novak-2002</td></tr><tr><td>P4</td><td>Concepts combine into Propositions</td><td>hierarchy</td><td>novak-canas-2008</td></tr><tr><td>P5</td><td>Linking Phrases make explicit Propositions</td><td>hierarchy</td><td>novak-canas-2008</td></tr><tr><td>P6</td><td>Concept Maps represent Propositions</td><td>hierarchy</td><td>novak-canas-2008</td></tr><tr><td>P7</td><td>Focus Question sets context for Concept Maps</td><td>hierarchy</td><td>novak-canas-2008</td></tr><tr><td>P8</td><td>Concept Maps can reveal Misconceptions</td><td>cross-link</td><td>novak-2002, novak-canas-2008</td></tr><tr><td>P9</td><td>Misconceptions may be faulty Propositions</td><td>cross-link</td><td>novak-2002</td></tr></tbody>
         </table>
       </section>
+
       <section class="panel">
         <h2>Parking Lot</h2>
         <ul><li>Meaningful Learning</li><li>Learner</li><li>Prior Knowledge</li><li>New Knowledge</li><li>Concepts</li><li>Propositions</li><li>Linking Phrases</li><li>Concept Maps</li><li>Focus Question</li><li>Misconceptions</li></ul>
       </section>
-      
+
+<section class="panel"><h2>Sources</h2><table><thead><tr><th>ID</th><th>Source</th></tr></thead><tbody><tr><td>novak-2002</td><td><a href="https://doi.org/10.1002/sce.10032">Novak, J. D. (2002). Meaningful Learning: The Essential Factor for Conceptual Change.</a></td></tr><tr><td>novak-canas-2008</td><td><a href="https://cmap.ihmc.us/docs/theory-of-concept-maps">Novak, J. D., and Cañas, A. J. (2008). The Theory Underlying Concept Maps.</a></td></tr></tbody></table></section>
       <section class="panel">
         <h2>Learning Checks</h2>
-        <ol><li><p>Concept Maps -&gt; ________ -&gt; Propositions</p><details><summary>Answer</summary><p>represent</p></details></li><li><p>Focus Question -&gt; ? -&gt; Concept Maps</p><ol type="A"><li>decorates</li><li>sets context for</li><li>is an example of</li></ol><details><summary>Answer</summary><p>sets context for</p></details></li><li><p>Faulty: Concepts -&gt; are the same as -&gt; Propositions. What repair would make this Novak-style?</p><details><summary>Answer</summary><p>Concepts -&gt; combine into -&gt; Propositions</p></details></li></ol>
+        <ol><li><p><strong>Fill Link:</strong> Concept Maps -&gt; ________ -&gt; Propositions</p><details><summary>Answer</summary><p>represent</p></details></li><li><p><strong>Choose Link:</strong> Focus Question -&gt; ? -&gt; Concept Maps</p><ol type="A"><li>decorates</li><li>sets context for</li><li>is an example of</li></ol><details><summary>Answer</summary><p>sets context for</p></details></li><li><p><strong>Repair Misconception:</strong> Faulty: Concepts -&gt; are the same as -&gt; Propositions. What repair would make this Novak-style?</p><details><summary>Answer</summary><p>Concepts -&gt; combine into -&gt; Propositions</p></details></li></ol>
       </section>
     </aside>
   </main>
@@ -253,6 +317,15 @@
         if (action === 'reset') scale = 1;
         applyScale();
       });
+    });
+    const detailsButton = document.querySelector('[data-toggle-details]');
+    if (new URLSearchParams(window.location.search).get('details') === 'hidden') {
+      document.body.classList.add('details-hidden');
+      detailsButton.textContent = 'Show Details';
+    }
+    detailsButton.addEventListener('click', () => {
+      document.body.classList.toggle('details-hidden');
+      detailsButton.textContent = document.body.classList.contains('details-hidden') ? 'Show Details' : 'Hide Details';
     });
   </script>
 </body>

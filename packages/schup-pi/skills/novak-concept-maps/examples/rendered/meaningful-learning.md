@@ -28,17 +28,24 @@ flowchart TB
 ```
 
 ## Propositions
-| ID | Proposition | Type |
-|---|---|---|
-| P1 | Meaningful Learning requires Prior Knowledge | hierarchy |
-| P2 | Learner chooses to integrate New Knowledge | hierarchy |
-| P3 | New Knowledge is connected with Prior Knowledge | hierarchy |
-| P4 | Concepts combine into Propositions | hierarchy |
-| P5 | Linking Phrases make explicit Propositions | hierarchy |
-| P6 | Concept Maps represent Propositions | hierarchy |
-| P7 | Focus Question sets context for Concept Maps | hierarchy |
-| P8 | Concept Maps can reveal Misconceptions | cross-link |
-| P9 | Misconceptions may be faulty Propositions | cross-link |
+| ID | Proposition | Type | Sources |
+|---|---|---|---|
+| P1 | Meaningful Learning requires Prior Knowledge | hierarchy | novak-2002 |
+| P2 | Learner chooses to integrate New Knowledge | hierarchy | novak-2002 |
+| P3 | New Knowledge is connected with Prior Knowledge | hierarchy | novak-2002 |
+| P4 | Concepts combine into Propositions | hierarchy | novak-canas-2008 |
+| P5 | Linking Phrases make explicit Propositions | hierarchy | novak-canas-2008 |
+| P6 | Concept Maps represent Propositions | hierarchy | novak-canas-2008 |
+| P7 | Focus Question sets context for Concept Maps | hierarchy | novak-canas-2008 |
+| P8 | Concept Maps can reveal Misconceptions | cross-link | novak-2002, novak-canas-2008 |
+| P9 | Misconceptions may be faulty Propositions | cross-link | novak-2002 |
+
+## Sources
+
+| ID | Source |
+|---|---|
+| novak-2002 | [Novak, J. D. (2002). Meaningful Learning: The Essential Factor for Conceptual Change.](https://doi.org/10.1002/sce.10032) |
+| novak-canas-2008 | [Novak, J. D., and Cañas, A. J. (2008). The Theory Underlying Concept Maps.](https://cmap.ihmc.us/docs/theory-of-concept-maps) |
 
 ## Parking Lot
 
@@ -55,12 +62,12 @@ flowchart TB
 
 ## Learning Checks
 
-1. Concept Maps -> ________ -> Propositions
-2. Focus Question -> ? -> Concept Maps
+1. **fill link:** Concept Maps -> ________ -> Propositions
+2. **choose link:** Focus Question -> ? -> Concept Maps
    - decorates
    - sets context for
    - is an example of
-3. Faulty: Concepts -> are the same as -> Propositions. What repair would make this Novak-style?
+3. **repair misconception:** Faulty: Concepts -> are the same as -> Propositions. What repair would make this Novak-style?
 
 <details>
 <summary>Answer Key</summary>

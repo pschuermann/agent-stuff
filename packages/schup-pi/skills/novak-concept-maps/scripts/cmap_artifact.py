@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import warnings
 from collections import defaultdict
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -43,22 +44,112 @@ def load_map(path: Path) -> dict:
     return data
 
 
+def advisory(message: str) -> None:
+    """Report a likely modeling issue without blocking legitimate expert maps."""
+    warnings.warn(f"Concept-map advisory: {message}", UserWarning, stacklevel=3)
+
+
+def normalized_label(value: str) -> str:
+    return " ".join(value.casefold().split())
+
+
+def looks_sentence_like(label: str) -> bool:
+    """Flag only clear sentence labels, not long technical terms or decimals."""
+    tokens = re.findall(r"\d+(?:\.\d+)?|[A-Za-z]+", label)
+    terminal_period = len(tokens) >= 5 and bool(re.search(r"\.\s*$", label))
+    return len(tokens) > 10 or terminal_period
+
+
+def link_needs_review(link: str) -> bool:
+    """Flag explicit navigation/caption labels without guessing at expert grammar."""
+    return normalized_label(link) in {
+        "context", "next", "options", "link", "connection", "details", "more", "see also",
+    }
+
+
 def validate_map(data: dict) -> None:
-    concept_ids = {concept["id"] for concept in data.get("concepts", [])}
+    if not isinstance(data, dict):
+        raise ValueError("Map JSON must be an object.")
     if not data.get("title"):
         raise ValueError("Map needs a title.")
     if not data.get("focus_question"):
         raise ValueError("Map needs a focus_question.")
-    if not concept_ids:
+
+    concepts = data.get("concepts", [])
+    if not isinstance(concepts, list) or not concepts:
         raise ValueError("Map needs at least one concept.")
-    for proposition in data.get("propositions", []):
+    concept_ids: set[str] = set()
+    labels: dict[str, str] = {}
+    for index, concept in enumerate(concepts, start=1):
+        if not isinstance(concept, dict):
+            raise ValueError(f"Concept {index} must be an object.")
+        missing = [key for key in ("id", "label") if not concept.get(key)]
+        if missing:
+            raise ValueError(f"Concept {index} is missing fields: {', '.join(missing)}")
+        concept_id = str(concept["id"])
+        if concept_id in concept_ids:
+            raise ValueError(f"Duplicate concept id: {concept_id}")
+        concept_ids.add(concept_id)
+        label = str(concept["label"])
+        normalized = normalized_label(label)
+        if normalized in labels:
+            advisory(f"concept '{label}' duplicates label '{labels[normalized]}'; prefer one canonical concept.")
+        else:
+            labels[normalized] = label
+        if looks_sentence_like(label):
+            advisory(f"concept '{label}' looks sentence-like; consider a concise concept label.")
+
+    sources = data.get("sources", [])
+    if sources and not isinstance(sources, list):
+        advisory("sources should be an array of source records.")
+        sources = []
+    source_ids: set[str] = set()
+    for index, source in enumerate(sources, start=1):
+        if not isinstance(source, dict) or not source.get("id"):
+            advisory(f"source {index} has no usable id.")
+            continue
+        source_id = str(source["id"])
+        if source_id in source_ids:
+            advisory(f"source id '{source_id}' is duplicated.")
+        source_ids.add(source_id)
+
+    propositions = data.get("propositions", [])
+    if not isinstance(propositions, list):
+        raise ValueError("propositions must be an array.")
+    proposition_ids: set[str] = set()
+    for index, proposition in enumerate(propositions, start=1):
+        if not isinstance(proposition, dict):
+            raise ValueError(f"Proposition {index} must be an object.")
         missing = [key for key in ("id", "from", "link", "to") if not proposition.get(key)]
         if missing:
-            raise ValueError(f"Proposition is missing fields: {', '.join(missing)}")
-        if proposition["from"] not in concept_ids:
-            raise ValueError(f"Unknown concept id in proposition {proposition['id']}: {proposition['from']}")
-        if proposition["to"] not in concept_ids:
-            raise ValueError(f"Unknown concept id in proposition {proposition['id']}: {proposition['to']}")
+            raise ValueError(f"Proposition {index} is missing fields: {', '.join(missing)}")
+        proposition_id = str(proposition["id"])
+        if proposition_id in proposition_ids:
+            raise ValueError(f"Duplicate proposition id: {proposition_id}")
+        proposition_ids.add(proposition_id)
+        for endpoint in ("from", "to"):
+            if proposition[endpoint] not in concept_ids:
+                raise ValueError(
+                    f"Unknown concept id in proposition {proposition_id}: {proposition[endpoint]}"
+                )
+        link = str(proposition["link"])
+        if link_needs_review(link):
+            advisory(
+                f"proposition {proposition_id} link '{link}' looks like a navigation or caption label; "
+                "replace it with a proposition-level relationship."
+            )
+        source_refs = proposition.get("source_refs", [])
+        if source_refs and not isinstance(source_refs, list):
+            advisory(f"proposition {proposition_id} source_refs should be an array.")
+            continue
+        for source_ref in source_refs:
+            if not isinstance(source_ref, str) or not source_ref.strip():
+                advisory(f"proposition {proposition_id} has a blank or invalid source reference.")
+            elif source_ref not in source_ids:
+                advisory(
+                    f"proposition {proposition_id} refers to unknown source '{source_ref}'; "
+                    "add it to sources or correct source_refs."
+                )
 
 
 def build_mermaid(data: dict) -> str:
@@ -80,6 +171,26 @@ def build_mermaid(data: dict) -> str:
 
 def concept_lookup(data: dict) -> dict[str, str]:
     return {concept["id"]: concept["label"] for concept in data["concepts"]}
+
+
+def has_provenance(data: dict) -> bool:
+    return any(proposition.get("source_refs") for proposition in data.get("propositions", []))
+
+
+def source_description(source: dict) -> str:
+    return str(source.get("citation") or source.get("title") or source.get("id", "Source"))
+
+
+def source_refs_text(proposition: dict) -> str:
+    refs = proposition.get("source_refs", [])
+    if not isinstance(refs, list):
+        return str(refs) if refs else "—"
+    return ", ".join(str(ref) for ref in refs) or "—"
+
+
+def source_records(data: dict) -> list[dict]:
+    sources = data.get("sources", [])
+    return [source for source in sources if isinstance(source, dict)] if isinstance(sources, list) else []
 
 
 def box_size(label: str, kind: str = "concept") -> tuple[int, int]:
@@ -175,6 +286,7 @@ def layout_positions(data: dict) -> tuple[dict[str, dict], dict[str, dict], int,
 
 def build_markdown(data: dict, mermaid: str) -> str:
     labels = concept_lookup(data)
+    provenance = has_provenance(data)
     lines = [
         f"# {data['title']}",
         "",
@@ -187,12 +299,26 @@ def build_markdown(data: dict, mermaid: str) -> str:
         "```",
         "",
         "## Propositions",
-        "| ID | Proposition | Type |",
-        "|---|---|---|",
     ]
+    if provenance:
+        lines.extend(["| ID | Proposition | Type | Sources |", "|---|---|---|---|"])
+    else:
+        lines.extend(["| ID | Proposition | Type |", "|---|---|---|"])
     for proposition in data.get("propositions", []):
         sentence = f"{labels[proposition['from']]} {proposition['link']} {labels[proposition['to']]}"
-        lines.append(f"| {proposition['id']} | {sentence} | {proposition.get('type', 'hierarchy')} |")
+        row = f"| {proposition['id']} | {sentence} | {proposition.get('type', 'hierarchy')} |"
+        if provenance:
+            row += f" {source_refs_text(proposition)} |"
+        lines.append(row)
+
+    sources = source_records(data)
+    if sources:
+        lines.extend(["", "## Sources", "", "| ID | Source |", "|---|---|"])
+        for source in sources:
+            description = source_description(source)
+            if source.get("url"):
+                description = f"[{description}]({source['url']})"
+            lines.append(f"| {source.get('id', '—')} | {description} |")
 
     assessment = data.get("assessment", {})
     if assessment:
@@ -262,6 +388,7 @@ def build_markdown(data: dict, mermaid: str) -> str:
 
 def build_html(data: dict) -> str:
     labels = concept_lookup(data)
+    provenance = has_provenance(data)
     concept_positions, phrase_positions, canvas_width, canvas_height = layout_positions(data)
     theme = re.sub(r"[^a-z0-9_-]", "", data.get("theme", "default").lower())
 
@@ -305,9 +432,12 @@ def build_html(data: dict) -> str:
     propositions = []
     for proposition in data.get("propositions", []):
         sentence = f"{labels[proposition['from']]} {proposition['link']} {labels[proposition['to']]}"
+        source_cell = (
+            f"<td>{escape_html(source_refs_text(proposition))}</td>" if provenance else ""
+        )
         propositions.append(
             f"<tr><td>{escape_html(proposition['id'])}</td><td>{escape_html(sentence)}</td>"
-            f"<td>{escape_html(proposition.get('type', 'hierarchy'))}</td></tr>"
+            f"<td>{escape_html(proposition.get('type', 'hierarchy'))}</td>{source_cell}</tr>"
         )
 
     assessment = data.get("assessment", {})
@@ -365,6 +495,23 @@ def build_html(data: dict) -> str:
         resources = (
             '<section class="panel"><h2>Resources</h2><table><thead><tr><th>Concept</th><th>Resource</th>'
             f"<th>Kind</th></tr></thead><tbody>{''.join(resource_rows)}</tbody></table></section>"
+        )
+
+    source_rows = []
+    for source in source_records(data):
+        description = source_description(source)
+        if source.get("url"):
+            description = f'<a href="{escape_html(str(source["url"]))}">{escape_html(description)}</a>'
+        else:
+            description = escape_html(description)
+        source_rows.append(
+            f"<tr><td>{escape_html(str(source.get('id', '—')))}</td><td>{description}</td></tr>"
+        )
+    sources_section = ""
+    if source_rows:
+        sources_section = (
+            '<section class="panel"><h2>Sources</h2><table><thead><tr><th>ID</th><th>Source</th>'
+            f"</tr></thead><tbody>{''.join(source_rows)}</tbody></table></section>"
         )
 
     return f"""<!doctype html>
@@ -651,16 +798,17 @@ def build_html(data: dict) -> str:
       <section class="panel">
         <h2>Propositions</h2>
         <table>
-          <thead><tr><th>ID</th><th>Proposition</th><th>Type</th></tr></thead>
+          <thead><tr><th>ID</th><th>Proposition</th><th>Type</th>{'<th>Sources</th>' if provenance else ''}</tr></thead>
           <tbody>{''.join(propositions)}</tbody>
         </table>
       </section>
-      {assessment_section}
+{assessment_section}
       <section class="panel">
         <h2>Parking Lot</h2>
         <ul>{parking}</ul>
       </section>
-      {resources}
+{resources}
+{sources_section}
       <section class="panel">
         <h2>Learning Checks</h2>
         <ol>{''.join(exercises)}</ol>

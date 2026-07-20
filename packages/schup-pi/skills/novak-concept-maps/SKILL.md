@@ -7,16 +7,28 @@ description: Generate Novak-style concept maps, learning exercises, concept-map-
 
 Use this skill to create concept maps in the tradition of Joseph D. Novak and Alberto J. Cañas, with Cognitive Task Analysis and assessment uses from Crandall, Klein, Hoffman, Moon, and colleagues. The goal is not a pretty graph. The goal is to represent knowledge as readable propositions so the learner or domain expert can inspect, revise, compare, and test their understanding.
 
-Read `references/research.md` for the source-backed rationale when the user asks for theory, citations, or a careful explanation. Read `references/map-schema.md` when producing file artifacts or using the renderer script.
+Read `references/research.md` for the source-backed rationale when the user asks for theory, citations, or a careful explanation. Read `references/map-schema.md` when producing JSON or using the renderer. For a non-trivial or visual map, also read `references/artifact-workflow.md` before making the artifact.
+
+## Do Not Draw A Topic Tree
+
+A Novak map is a **network of concept-link-concept propositions**, not a decision tree, outline, user-journey, or topic taxonomy with captions on the branches. A linking phrase is part of the claim: remove either concept and the phrase should no longer stand on its own.
+
+- Do not turn categories such as “paid work” and “side projects” into top-level visual containers merely because the user mentioned them. First ask what they affect, enable, constrain, share, or differ on; use those answers as propositions through shared concepts. Create a visual region only after the proposition model justifies it.
+- Do not use a link label as navigation text (`context`, `next`, `options`, `leads here`) or leave it as an unlabeled branch. Rewrite it until the complete triple is a useful, independently meaningful sentence.
+- A hierarchy is allowed, but every parent-child connection still needs a proposition. If the output could work unchanged as a flowchart or mind map, stop and rebuild the propositions.
+
+See `references/artifact-workflow.md` for a compact bad-tree-to-proposition-network repair.
 
 ## Core Commitments
 
 Treat these as the quality bar for every map:
 
 - Start from a focus question. A concept map answers a particular question in a particular context. For non-trivial maps, confirm the focus question before building the map.
+- Verify a supplied source before extracting a map from it. Confirm the exact document, video, interview, title, author or speaker, and version where available; never silently substitute a similarly named search result.
 - Use concepts as concise labels for perceived regularities in objects, events, or records. Prefer one to three words. Do not put whole sentences in concept boxes.
 - Use propositions as the basic unit. Every linked pair should read as: `Concept -> linking phrase -> Concept`. The resulting sentence should make sense on its own.
 - Put linking phrases on links, not inside concept boxes. Linking phrases should usually include a verb and should be as brief as the relationship allows.
+- Treat a user-provided distinction as evidence to model, not as a layout instruction. Express it through propositions before using it as a branch, cluster, or container.
 - Build a hierarchy. Put the most general, inclusive concepts near the top and more specific concepts below. For beginners, prefer one root concept unless the domain clearly needs more.
 - Use a parking lot before finalizing. List relevant concepts first, then rank and connect them.
 - Add cross-links selectively. Cross-links connect different map regions and often reveal integration or creativity. Do not add every possible relationship.
@@ -28,17 +40,18 @@ Treat these as the quality bar for every map:
 - For assessment, compare proposition structures before judging the visual layout. Differences in concepts, links, hierarchy, cross-links, detail, and perspective-taking are more meaningful than whether two maps look alike.
 - Keep the human in the interpretive loop. Codex can organize, merge, compare, and surface patterns, but the learner or domain expert should confirm the frame, labels, and interpretation.
 
-## Workflow
+## Workflow Gates
 
-1. Define and, when needed, confirm the focus question.
-2. Extract or propose a parking lot of concepts. For normal maps use about 15 to 25 concepts. For quick learning exercises, use 6 to 12.
-3. Audit the parking lot for concept eligibility. Split candidates into subject-matter concepts, task/context metadata, and learning or assessment notes.
-4. Rank eligible concepts from general to specific.
-5. Draft propositions. Each proposition must be readable as a short sentence.
-6. Search for 1 to 4 useful cross-links between different regions of the map.
-7. For saved artifacts, render the map as standalone HTML first. The HTML view should use separate visual objects for concept boxes and linking phrases, with lines from concept to linking phrase to concept.
-8. Also provide a proposition table so the map remains inspectable even if the visual layout needs revision.
-9. Add learning exercises when the user's goal is study, retrieval practice, tutoring, or diagnosis.
+Tiny inline examples may use an explicitly **assumed** focus question. All non-trivial maps, maps based on a source, saved artifacts, assessment maps, and maps published through a visual surface use these gates in order. Do not render ahead of a gate: a polished SVG cannot repair an unexamined proposition model.
+
+1. **Source gate** — Identify and verify the exact supplied source(s), or state that the map is source-free. Keep source facts as metadata, not concept boxes. **Exit:** source list is confirmed or the user has been asked to resolve ambiguity.
+2. **Focus gate** — Confirm one focus question. When the request is only a topic, offer 2–4 materially different questions and wait. **Exit:** the map can state what it answers and excludes.
+3. **Parking-lot gate** — Build and audit a parking lot; separate domain concepts from source, task, and status metadata. Rank eligible concepts. **Exit:** concise, non-duplicated candidate concepts are ready.
+4. **Proposition gate** — Draft a proposition table before coordinates, Mermaid, SVG, or HTML. Read every triple aloud; add only cross-links that integrate regions. **Exit:** every proposed edge is a useful sentence and user distinctions are represented propositionally.
+5. **Interactive checkpoint** — If the user is available, show the focus question, audited parking lot, and proposition table; ask for corrections or approval. **Exit:** approval, correction, or a clearly stated reason that an asynchronous draft is required.
+6. **Artifact gate** — Create JSON, validate it, render it, and inspect the generated HTML/Markdown and proposition table. Publish the inspected artifact with the table through any visual surface; never recreate it as an ad hoc SVG or diagram. **Exit:** the visual is demonstrably a view of the JSON proposition model.
+
+Read `references/artifact-workflow.md` for the publication recipe, source/provenance handling, and the pre-render audit.
 
 ## Focus Question Checkpoint
 
@@ -58,7 +71,7 @@ Good focus-question options usually differ by purpose:
 
 Do not spend time creating the full map, hand-placing coordinates, or rendering artifacts until the focus question is confirmed.
 
-Exception: for a tiny inline example, a quick sketch, or an exploratory draft, infer a focus question and label it as assumed. For saved artifacts, assessment maps, maps based on multiple sources, or maps the user wants to inspect visually, stop at the checkpoint first.
+Exception: for a tiny inline example, a quick sketch, or an exploratory draft, infer a focus question and label it as assumed. For saved artifacts, assessment maps, maps based on one or more sources, or maps the user wants to inspect visually, stop at the source and focus gates first.
 
 ## Concept Eligibility
 
@@ -321,20 +334,20 @@ For large maps:
 
 ## Artifact Workflow
 
-For reusable outputs, create a JSON map using the schema in `references/map-schema.md`, then run:
+For reusable outputs, first complete the source, focus, parking-lot, and proposition gates. Create a JSON map using the schema in `references/map-schema.md`; it is the source of truth, not a by-product of a visual. Then run:
 
 ```bash
 python scripts/cmap_artifact.py examples/meaningful-learning.json --out-dir /path/to/output
 ```
 
-The script writes:
+The script validates structural requirements and emits advisory warnings for high-confidence review prompts (for example duplicate labels, sentence-like labels, explicit navigation/caption links, or unresolved source references) without rejecting valid expert terminology. It writes:
 
 - `*.html` with a CmapTools-like canvas: concept boxes, linking phrase boxes, two-segment proposition lines, side panels for propositions and exercises, and zoom controls.
 - `*.md` with a Mermaid concept map, propositions, and learning checks.
 - `*.mmd` with only the Mermaid source.
 - `*.cxl` with a minimal CmapTools-compatible XML representation.
 
-Prefer the HTML output when the user wants to see the map in Codex. Use Mermaid only as a quick fallback. The proposition table is the source of truth; every diagram is a view.
+Inspect the generated HTML and Markdown proposition table after rendering. Prefer the HTML output when the user wants to see the map in Codex. Use Mermaid only as a quick fallback. The proposition table and JSON are the source of truth; every diagram is a view. Use `source_refs` in propositions when claims come from documents, videos, interviews, or several sources; the HTML and Markdown outputs retain them.
 
 The HTML renderer supports:
 
@@ -366,6 +379,8 @@ Before returning the map, check:
 - Is the learner oriented before MCCM or SAFI tasks?
 - Is the scoring rubric explicit about what counts as correct, partial, or incorrect?
 - Is any source-to-proposition audit trail preserved when the map came from interviews or documents?
+- For a map published through a visual surface, did JSON precede rendering, and did the inspected artifact and proposition table come from that same JSON?
+- Does each user-provided distinction appear first as one or more propositions rather than as an unexplained branch or container?
 
 ## Sources
 

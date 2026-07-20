@@ -40,6 +40,11 @@
       "id": 8,
       "prompt": "Generate a concept map from these notes and make it a nice side-panel artifact. The notes cover tokenization, next-token prediction, chat masks, and special tokens.",
       "expected_output": "A checkpoint response that proposes several meaningfully different focus questions and asks the user to choose or edit one before creating the full saved artifact."
+    },
+    {
+      "id": 9,
+      "prompt": "Make a Sideshow concept map from the interview video I linked earlier. It distinguishes paid work from side projects, but both affect skills and income. I want a polished map now.",
+      "expected_output": "Before rendering, the response verifies the exact video rather than selecting a similarly named result; confirms a focus question; proposes an audited parking lot and proposition table; represents paid work and side projects through shared propositions rather than unexplained branches; and waits for an interactive proposition checkpoint before JSON, rendering, and Sideshow publication."
     }
   ]
 }
