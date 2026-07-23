@@ -1,11 +1,13 @@
 ---
 name: plainspoken-prose
-description: Draft clear, direct, specific prose for human readers without generic AI-style polish. Use when writing or substantially editing summaries, insights, articles, notes, documentation, emails, web copy, explanations, recommendations, or public-facing text, especially when the user wants the first draft to sound natural rather than like an AI rewrite.
+description: "Draft or substantially rewrite reader-facing prose that the user explicitly asks to polish: posts, articles, emails, Slack announcements, web copy, narrative summaries and insights, or post-incident reviews. Do not activate merely because a task produces Markdown or another written artifact. Do not use for technical documentation, specifications, READMEs, architecture or design documents, prompts, non-PIR reports, plans, reviews, analyses, questions, or ordinary answers. An explicit request to use `plainspoken-prose` overrides these exclusions."
 ---
 
 # Plainspoken Prose
 
-Use this skill while drafting the first version, not only as a cleanup pass. The goal is finished prose that feels clear, grounded, and unforced.
+Use this skill only for a reader-facing communication or narrative piece that the user explicitly asks to draft, rewrite, or polish. Use it while drafting the first version, not only as a cleanup pass. The goal is finished prose that feels clear, grounded, and unforced.
+
+A request to “write,” “document,” “summarise,” or “make it concise” is not enough by itself. It may refer to a Markdown spec, technical document, prompt, non-PIR report, plan, code review, or ordinary answer; leave those to their domain skill. An explicit request for this skill always wins.
 
 ## Drafting Rules
 
