@@ -1,0 +1,41 @@
+{
+  "skill_name": "constructive-type-design",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Refactor this TypeScript scheduling model and its callers. Right now `Job` has `scheduled: boolean`, `scheduledAt?: Date`, and `cron?: string`; production has reached `scheduled === true` with no date. Some jobs run immediately, some run once at a time, and recurring jobs have a cron expression. Keep the change practical and show how the HTTP payload becomes the internal type.",
+      "expected_output": "Uses a discriminated union with payloads for immediate, one-time, and recurring schedules; parses the HTTP DTO at the boundary; uses exhaustive handling; identifies and removes contradictory states without adding unrelated wrappers; proposes or runs focused typechecking and parser/state tests.",
+      "files": [],
+      "assertions": [
+        "The response models legal schedule states with a sum/discriminated-union representation rather than more optional fields.",
+        "The response places conversion from the HTTP payload at an explicit boundary and preserves the parsed result in the internal type.",
+        "The response includes exhaustive consumer handling and verification of contradictory or malformed inputs.",
+        "The response avoids unrelated branded primitives or maximal-precision redesigns."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "In this Rust service, `sum_changes(entries: &[Entry])` correctly returns zero for an empty slice, but `latest_timestamp(entries: &[Entry])` calls `.last().expect(\"inventory logs are never empty\")`. The invariant originates when a database query returns rows. Redesign and implement this without making the entire codebase use a fancy collection type.",
+      "expected_output": "Leaves `sum_changes` on an ordinary slice, strengthens only the latest-timestamp path or returns honest absence, establishes non-emptiness at the database adapter, propagates the stronger value to the consumer, avoids unchecked casts/unwraps, and verifies empty/non-empty database results.",
+      "files": [],
+      "assertions": [
+        "The response keeps the ordinary collection type for `sum_changes` because that operation is already total.",
+        "The response removes the `expect` by strengthening only the consumer path that requires non-emptiness or by returning an honest `Option`/`Result` when the boundary cannot prove it.",
+        "The response identifies the database adapter as the place to establish or reject non-emptiness.",
+        "The response includes focused verification and does not propose an application-wide collection abstraction."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Please improve type safety in our TypeScript mailer by introducing a branded `EmailAddress` everywhere. The application never inspects an email address; it receives one from an authenticated upstream API and forwards it to a third-party mail service. There have been no email-format bugs, but we want to follow ‘make illegal states unrepresentable.’",
+      "expected_output": "Challenges mechanical wrapping, asks what operation or bug the brand prevents, distinguishes boundary trust/shape checking from a useful internal invariant, and recommends retaining string unless a concrete consumer, confusion problem, or required normalization justifies a wrapper.",
+      "files": [],
+      "assertions": [
+        "The response does not blindly introduce a branded email type across the codebase.",
+        "The response explains that no consumer interprets email structure and identifies the missing concrete partial operation or failure branch.",
+        "The response distinguishes runtime boundary validation/security from a compile-time brand.",
+        "Any proposed wrapper is framed as an optional ergonomic boundary decision with explicit cost, not automatically stronger correctness."
+      ]
+    }
+  ]
+}
