@@ -83,12 +83,30 @@ Read these before writing a single test. They determine everything else.
    you brush it." Code you're afraid to touch is dead code. A strong suite is
    what keeps software alive.
 
+## Proportionality gate
+
+Start with the cheapest test that would have caught the defect. For a reported bug, the default is one concrete regression at the narrowest public boundary and, only when wiring caused the failure, one representative integration test.
+
+Escalate only when the shape of the risk calls for it:
+
+- Use property or fuzz testing for broad structured input spaces, parsers, state machines, or transformations where examples cannot cover the domain.
+- Use schedule or simulation testing for real concurrency or interleaving risks.
+- Use mutation testing when the question is whether existing assertions bite.
+- Use a small combinatorial fixture for finite configuration, provider, or permission matrices.
+
+Do not add randomized machinery merely because the subsystem is important. Do not repeat deterministic tests unless each repetition explores distinct inputs, faults, or schedules. Prefer representative production-shaped fixtures over large quantities of simplified mocks.
+
+Keep the ordinary edit loop under about 10 seconds when practical and put expanded campaigns behind a separate stress command. Profile before optimizing or cutting coverage. Stop once the regression is pinned, the relevant boundary is covered, and further machinery has no specific failure hypothesis.
+
+Keep successful-run output compact: suppress passing logs, preserve full failure diagnostics, and report the command, exit status, duration, and short summary instead of pasting every passing case.
+
 ## Fit the project before adding machinery
 
 Robust testing is not permission to drop an exotic harness into every repo. First
 inspect the existing project shape and make the smallest setup that can actually
 run locally and in CI:
 
+- **Reported regression:** first preserve the exact failure as a deterministic example, then test the nearest production boundary with representative data. Broaden into a campaign only when the incident reveals a wider input or state-space risk.
 - **Existing project with tests:** reuse the current runner, assertion style,
   fixture layout, factories, database helpers, and CI targets unless they are the
   reason the suite is weak. Add property/model/integration tests next to the
@@ -463,7 +481,7 @@ The final report should distinguish bugs found from assumptions clarified.
     counterexample to a permanent example test.
 12. Report what the suite proves, what it does not prove, any CI wiring added,
     and residual risks such as untested integrations or generators that still
-    miss important states.
+    miss important states. Summarize passing runs; do not paste their full output.
 
 When you write the tests, **say which techniques you're using and why** — the
 user is often learning this approach, and the reasoning is half the value.
