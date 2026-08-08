@@ -29,3 +29,20 @@ Root `mitsupi` skills that you still want in Claude Code can continue to be syml
 ## Dependency note
 
 Some skills include helper scripts with Node/Python dependencies. For this local package, dependencies are declared in the package root so scripts can resolve modules from `packages/schup-pi/node_modules` after `npm install` in this directory.
+
+## Model-and-effort stacks
+
+`extensions/stacks.ts` cycles model-and-effort tuples from `~/.pi/agent/stacks.json` without changing editor text. Configure only provider, model, and effort:
+
+```json
+{
+  "stacks": [
+    { "provider": "anthropic", "model": "claude-sonnet-4-5", "effort": "medium" },
+    { "provider": "openai", "model": "gpt-5", "effort": "high" }
+  ]
+}
+```
+
+- `Ctrl+]` selects the next tuple; `Ctrl+[` selects the previous one. Both directions wrap; `Ctrl+P` remains Pi's native model cycling, while `Ctrl+L` opens the model selector.
+- The extension rereads and validates this file on every shortcut, so saved edits take effect without `/reload`.
+- `/stacks` only lists the configured tuples and config path; it does not switch or configure stacks.
