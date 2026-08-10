@@ -4,6 +4,9 @@
   "description": "Pirmin Schuermann's personal Pi extensions, skills, and support utilities",
   "private": true,
   "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.ts"
+  },
   "keywords": [
     "pi-package",
     "pi-extension",

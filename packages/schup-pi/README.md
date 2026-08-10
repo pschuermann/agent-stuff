@@ -32,7 +32,7 @@ Some skills include helper scripts with Node/Python dependencies. For this local
 
 ## Model-and-effort stacks
 
-`extensions/stacks.ts` cycles model-and-effort tuples from `~/.pi/agent/stacks.json` without changing editor text. Configure only provider, model, and effort:
+`extensions/stacks.ts` cycles model-and-effort tuples from `~/.pi/agent/stacks.json` without changing editor text. Run `/stacks init` to preview and create a starter file from models that are scoped and authenticated on the current machine, or configure only provider, model, and effort manually:
 
 ```json
 {
@@ -45,4 +45,13 @@ Some skills include helper scripts with Node/Python dependencies. For this local
 
 - `Ctrl+]` selects the next tuple; `Ctrl+[` selects the previous one. Both directions wrap; `Ctrl+P` remains Pi's native model cycling, while `Ctrl+L` opens the model selector.
 - The extension rereads and validates this file on every shortcut, so saved edits take effect without `/reload`.
-- `/stacks` only lists the configured tuples and config path; it does not switch or configure stacks.
+- `/stacks` lists the configured tuples, flags unusable entries, and shows authenticated scoped models that are not represented.
+- `/stacks init` never overwrites an existing file. Its starter ladder conditionally recognizes DeepSeek V4 Flash; GPT-5.6 Luna, Terra, and Sol; and Claude Opus 5 and Fable 5. Unavailable models are omitted, direct subscription providers are preferred to OpenRouter, and pinned scoped efforts are respected.
+
+### Refreshing the list
+
+Keep the list small and order model-and-effort tuples from fast or economical routine work to the strongest escalation option. Treat benchmark results as evidence tied to a particular task, harness, effort, price, and date rather than as a universal ranking. When models change, use this prompt in Pi:
+
+> Review my Pi model-and-effort stacks for this machine. Read `~/.pi/agent/stacks.json`, inspect the current scoped models and authenticated providers, and identify scoped models that are missing or configured models that are no longer usable. Research relevant new models and effort levels using the `artificial-analysis` skill, official provider documentation, and applicable coding-agent benchmarks. Keep different benchmark methodologies and provider claims separate. Propose roughly 5–9 exact provider/model/effort tuples ordered from fast or economical routine work to strongest escalation, using my existing configuration as a prior rather than a permanent allowlist. Include only models scoped and authenticated on this machine. Explain additions, removals, effort choices, evidence gaps, and ordering; show the proposed JSON diff and ask before editing.
+
+The initializer currently prefers these effort points when they are available and not overridden by a scoped effort pin: DeepSeek V4 Flash `high`; GPT-5.6 Luna `medium`, `high`, and `xhigh`; Terra `low` and `high`; Opus 5 `high`; Fable 5 `high`; and Sol `medium`. Revise this guidance when newer evidence or local experience warrants it.
