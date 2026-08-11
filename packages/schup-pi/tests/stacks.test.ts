@@ -31,6 +31,23 @@ test("suggests the evidence-informed ladder in order", () => {
 	]);
 });
 
+test("suggests GitHub Copilot models when they are the authenticated source", () => {
+	const result = suggestStacks([
+		candidate("github-copilot", "gpt-5.6-luna"),
+		candidate("github-copilot", "gpt-5.6-terra"),
+		candidate("github-copilot", "gpt-5.6-sol"),
+	]);
+
+	assert.deepEqual(result, [
+		{ provider: "github-copilot", model: "gpt-5.6-luna", effort: "medium" },
+		{ provider: "github-copilot", model: "gpt-5.6-luna", effort: "high" },
+		{ provider: "github-copilot", model: "gpt-5.6-luna", effort: "xhigh" },
+		{ provider: "github-copilot", model: "gpt-5.6-terra", effort: "low" },
+		{ provider: "github-copilot", model: "gpt-5.6-terra", effort: "high" },
+		{ provider: "github-copilot", model: "gpt-5.6-sol", effort: "medium" },
+	]);
+});
+
 test("uses OpenRouter aliases when direct providers are absent", () => {
 	const result = suggestStacks([
 		candidate("openrouter", "deepseek/deepseek-v4-flash"),

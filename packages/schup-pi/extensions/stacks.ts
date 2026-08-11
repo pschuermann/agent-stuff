@@ -32,11 +32,11 @@ export interface StackCandidate {
 
 const STACK_RECIPES = [
 	{ models: [["deepseek", "deepseek-v4-flash"], ["openrouter", "deepseek/deepseek-v4-flash"]], efforts: ["high"] },
-	{ models: [["openai-codex", "gpt-5.6-luna"], ["openai", "gpt-5.6-luna"], ["openrouter", "openai/gpt-5.6-luna"]], efforts: ["medium", "high", "xhigh"] },
-	{ models: [["openai-codex", "gpt-5.6-terra"], ["openai", "gpt-5.6-terra"], ["openrouter", "openai/gpt-5.6-terra"]], efforts: ["low", "high"] },
+	{ models: [["github-copilot", "gpt-5.6-luna"], ["openai-codex", "gpt-5.6-luna"], ["openai", "gpt-5.6-luna"], ["openrouter", "openai/gpt-5.6-luna"]], efforts: ["medium", "high", "xhigh"] },
+	{ models: [["github-copilot", "gpt-5.6-terra"], ["openai-codex", "gpt-5.6-terra"], ["openai", "gpt-5.6-terra"], ["openrouter", "openai/gpt-5.6-terra"]], efforts: ["low", "high"] },
 	{ models: [["anthropic", "claude-opus-5"], ["openrouter", "anthropic/claude-opus-5"]], efforts: ["high"] },
 	{ models: [["anthropic", "claude-fable-5"], ["openrouter", "anthropic/claude-fable-5"]], efforts: ["high"] },
-	{ models: [["openai-codex", "gpt-5.6-sol"], ["openai", "gpt-5.6-sol"], ["openrouter", "openai/gpt-5.6-sol"]], efforts: ["medium"] },
+	{ models: [["github-copilot", "gpt-5.6-sol"], ["openai-codex", "gpt-5.6-sol"], ["openai", "gpt-5.6-sol"], ["openrouter", "openai/gpt-5.6-sol"]], efforts: ["medium"] },
 ] as const satisfies readonly StackRecipe[];
 
 export function suggestStacks(candidates: readonly StackCandidate[]): Stack[] {
@@ -263,11 +263,11 @@ export default function stacksExtension(pi: ExtensionAPI) {
 		ctx.ui.notify(targetLabel(target.stack), "info");
 	}
 
-	pi.registerShortcut("ctrl+]", {
+	pi.registerShortcut("alt+]", {
 		description: "Next configured stack",
 		handler: (ctx) => cycle(1, ctx),
 	});
-	pi.registerShortcut("ctrl+[", {
+	pi.registerShortcut("alt+[", {
 		description: "Previous configured stack",
 		handler: (ctx) => cycle(-1, ctx),
 	});

@@ -33,6 +33,9 @@ Some skills include helper scripts with Node/Python dependencies. For this local
 ## Model-and-effort stacks
 
 `extensions/stacks.ts` cycles model-and-effort tuples from `~/.pi/agent/stacks.json` without changing editor text. Run `/stacks init` to preview and create a starter file from models that are scoped and authenticated on the current machine, or configure only provider, model, and effort manually:
+`extensions/stacks.ts` cycles model-and-effort tuples from `~/.pi/agent/stacks.json` without changing editor text. Run `/stacks init` to preview and create a starter file from models that are scoped and authenticated on the current machine, or configure only provider, model, and effort manually:
+
+The default shortcuts are `Option+]` for the next stack and `Option+[` for the previous stack (`alt+]` and `alt+[` in Pi shortcut notation).
 
 ```json
 {
