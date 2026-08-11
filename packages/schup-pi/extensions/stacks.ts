@@ -4,6 +4,8 @@ import { type Model } from "@earendil-works/pi-ai";
 import { getAgentDir, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
 
 const CONFIG_PATH = join(getAgentDir(), "stacks.json");
+const NEXT_SHORTCUT = "alt+]";
+const PREVIOUS_SHORTCUT = "alt+[";
 const EFFORT_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
 const EFFORT_LEVEL_SET = new Set<string>(EFFORT_LEVELS);
 
@@ -152,6 +154,23 @@ function targetLabel(stack: Stack): string {
 	return `${stack.provider}/${stack.model} (${stack.effort})`;
 }
 
+function formatKey(key: string): string {
+	return key
+		.split("+")
+		.map((part) => {
+			const lower = part.toLowerCase();
+			if (process.platform === "darwin" && lower === "alt") return "Option";
+			if (lower === "ctrl") return "Ctrl";
+			if (lower === "shift") return "Shift";
+			return part.length === 1 ? part.toUpperCase() : part.charAt(0).toUpperCase() + part.slice(1);
+		})
+		.join("+");
+}
+
+function shortcutsLine(): string {
+	return `Shortcuts\n${formatKey(NEXT_SHORTCUT)} next stack\n${formatKey(PREVIOUS_SHORTCUT)} previous stack`;
+}
+
 function resolveStacks(stacks: Stack[], ctx: ExtensionContext): ResolutionResult {
 	const diagnostics: string[] = [];
 	const resolved: ResolvedStack[] = [];
@@ -263,11 +282,11 @@ export default function stacksExtension(pi: ExtensionAPI) {
 		ctx.ui.notify(targetLabel(target.stack), "info");
 	}
 
-	pi.registerShortcut("alt+]", {
+	pi.registerShortcut(NEXT_SHORTCUT, {
 		description: "Next configured stack",
 		handler: (ctx) => cycle(1, ctx),
 	});
-	pi.registerShortcut("alt+[", {
+	pi.registerShortcut(PREVIOUS_SHORTCUT, {
 		description: "Previous configured stack",
 		handler: (ctx) => cycle(-1, ctx),
 	});
@@ -302,7 +321,7 @@ export default function stacksExtension(pi: ExtensionAPI) {
 				}
 
 				const preview = proposed.map((stack) => targetLabel(stack)).join("\n");
-				const confirmed = await ctx.ui.confirm("Create model stacks?", `${preview}\n\n${CONFIG_PATH}`);
+				const confirmed = await ctx.ui.confirm("Create model stacks?", `${shortcutsLine()}\n\n${preview}\n\n${CONFIG_PATH}`);
 				if (!confirmed) return;
 				try {
 					writeInitialConfig(proposed);
@@ -328,7 +347,7 @@ export default function stacksExtension(pi: ExtensionAPI) {
 			const lines = config.stacks.map((stack) => targetLabel(stack));
 			const resolution = resolveStacks(config.stacks, ctx);
 			const missing = scopedModelsMissingFrom(config.stacks, ctx);
-			const sections = [`Stacks\n${lines.join("\n")}`];
+			const sections = [shortcutsLine(), `Stacks\n${lines.join("\n")}`];
 			if (resolution.diagnostics.length > 0) sections.push(`Unavailable or invalid\n${resolution.diagnostics.join("\n")}`);
 			if (missing.length > 0) sections.push(`Scoped but not configured\n${missing.join("\n")}`);
 			sections.push(CONFIG_PATH);

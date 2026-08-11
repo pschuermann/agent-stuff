@@ -33,7 +33,6 @@ Some skills include helper scripts with Node/Python dependencies. For this local
 ## Model-and-effort stacks
 
 `extensions/stacks.ts` cycles model-and-effort tuples from `~/.pi/agent/stacks.json` without changing editor text. Run `/stacks init` to preview and create a starter file from models that are scoped and authenticated on the current machine, or configure only provider, model, and effort manually:
-`extensions/stacks.ts` cycles model-and-effort tuples from `~/.pi/agent/stacks.json` without changing editor text. Run `/stacks init` to preview and create a starter file from models that are scoped and authenticated on the current machine, or configure only provider, model, and effort manually:
 
 The default shortcuts are `Option+]` for the next stack and `Option+[` for the previous stack (`alt+]` and `alt+[` in Pi shortcut notation).
 
@@ -46,8 +45,9 @@ The default shortcuts are `Option+]` for the next stack and `Option+[` for the p
 }
 ```
 
-- `Ctrl+]` selects the next tuple; `Ctrl+[` selects the previous one. Both directions wrap; `Ctrl+P` remains Pi's native model cycling, while `Ctrl+L` opens the model selector.
+- `Option+]` (`alt+]`) selects the next tuple; `Option+[` (`alt+[`) selects the previous one. Both directions wrap; `Ctrl+P` remains Pi's native model cycling, while `Ctrl+L` opens the model selector.
 - The extension rereads and validates this file on every shortcut, so saved edits take effect without `/reload`.
+- `/stacks` and `/stacks init`'s confirmation preview both show the current shortcuts first, so you don't need to remember them.
 - `/stacks` lists the configured tuples, flags unusable entries, and shows authenticated scoped models that are not represented.
 - `/stacks init` never overwrites an existing file. Its starter ladder conditionally recognizes DeepSeek V4 Flash; GPT-5.6 Luna, Terra, and Sol; and Claude Opus 5 and Fable 5. Unavailable models are omitted, direct subscription providers are preferred to OpenRouter, and pinned scoped efforts are respected.
 
